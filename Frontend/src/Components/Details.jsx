@@ -14,12 +14,12 @@ const Details = () => {
 
   useEffect(() => {
     axios
-      .get("http://localhost:3000/order")
+      .get("https://kera-internship.onrender.com/order")
       .then((res) => setOrders(res.data))
       .catch((error) => console.error("Error fetching orders:", error));
 
     axios
-      .get("http://localhost:3000/machine")
+      .get("https://kera-internship.onrender.com/machine")
       .then((res) => setBom(res.data))
       .catch((error) => console.error("Error fetching BOM:", error));
   }, []);
@@ -33,14 +33,13 @@ const Details = () => {
   useEffect(() => {
     if (selectedOrder && bom.length > 0) {
       setOrderQuantity(selectedOrder.quantity);
-      const matchingBOM = bom.filter((b) => b.name === selectedOrder.item);
-      setFilteredBOM(matchingBOM);
-
-      if (matchingBOM.length > 0) {
-        const latestProcess = matchingBOM.reduce((latest, process) =>
+            setFilteredBOM(bom);  
+  
+      if (bom.length > 0) {
+        const latestProcess = bom.reduce((latest, process) =>
           new Date(process.end_time) > new Date(latest.end_time) ? process : latest
         );
-
+  
         setEstimatedDelivery(
           new Intl.DateTimeFormat("en-GB", {
             year: "numeric",
@@ -57,6 +56,7 @@ const Details = () => {
       }
     }
   }, [selectedOrder, bom]);
+  
 
   return (
     <div className="w-full flex flex-col items-center">
@@ -77,7 +77,7 @@ const Details = () => {
         >
           {orders.map((order) => (
             <option key={order._id} value={order._id}>
-              {order.customer} - {order.item} (Qty: {order.quantity})
+              {order.orderId}-{order.customer} - (Qty: {order.quantity})
             </option>
           ))}
         </select>

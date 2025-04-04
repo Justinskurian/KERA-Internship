@@ -4,17 +4,36 @@ import { Link } from "react-router-dom";
 
 const ProductionOrder = ({ child }) => {
   const [orders, setOrders] = useState([]);
+  const [bom, setBom] = useState([]);
+  const [schedule, setSchedule] = useState([]);
 
   useEffect(() => {
     axios
-      .get("http://localhost:3000/order")
+      .get("https://kera-internship.onrender.com/order")
       .then((res) => {
         setOrders(res.data);
       })
       .catch((error) => {
         console.log(error);
       });
+
+    axios
+      .get("https://kera-internship.onrender.com/machine")
+      .then((res) => setBom(res.data))
+      .catch((error) => console.error("Error fetching BOM:", error));
+
+    axios
+      .get("https://kera-internship.onrender.com/schedule")
+      .then((res) => setSchedule(res.data))
+      .catch((error) => console.error("Error fetching Schedule:", error));
   }, []);
+
+  const formatDateTime = (dateString) => {
+    if (!dateString || isNaN(new Date(dateString).getTime())) {
+      return "N/A"; // Fallback if date is invalid
+    }
+    return new Date(dateString).toLocaleString();
+  };
 
   return (
     <div>
@@ -27,9 +46,10 @@ const ProductionOrder = ({ child }) => {
             <p className="text-center text-gray-500">No orders available.</p>
           ) : (
             orders.map((poData, index) => {
-              const formattedDeliveryDate = new Date(poData.deliveryDate)
-                .toISOString()
-                .split("T")[0];
+              const formattedDeliveryDate = formatDateTime(poData.deliveryDate);
+              const orderSchedules = schedule.filter(
+                (sch) => sch.status === "Idle"
+              );
 
               return (
                 <div
@@ -51,13 +71,6 @@ const ProductionOrder = ({ child }) => {
                   </div>
 
                   <div>
-                    <p className="text-gray-500">Product Code</p>
-                    <p className="text-lg font-semibold text-gray-800">
-                      {poData.item}
-                    </p>
-                  </div>
-
-                  <div>
                     <p className="text-gray-500">Quantity</p>
                     <p className="text-lg font-semibold text-gray-800">
                       {poData.quantity}
@@ -69,6 +82,38 @@ const ProductionOrder = ({ child }) => {
                     <p className="text-xl font-bold text-orange-600">
                       {formattedDeliveryDate}
                     </p>
+                  </div>
+
+                  <div className="col-span-2">
+                    <p className="text-gray-500 font-semibold">Scheduled Processes:</p>
+                    {orderSchedules.length > 0 ? (
+                      <ul className="mt-2">
+                        {orderSchedules.map((sch, idx) => (
+                          <li
+                            key={idx}
+                            className="p-2 bg-white rounded shadow-sm border mt-1"
+                          >
+                            <p className="text-sm text-gray-700">
+                              <strong>Machine:</strong> {sch.machineId}
+                            </p>
+                            <p className="text-sm text-gray-700">
+                              <strong>Process:</strong> {sch.process}
+                            </p>
+                            <p className="text-sm text-gray-700">
+                              <strong>Start Time:</strong> {formatDateTime(sch.start_time)}
+                            </p>
+                            <p className="text-sm text-gray-700">
+                              <strong>End Time:</strong> {formatDateTime(sch.end_time)}
+                            </p>
+                            <p className="text-sm text-gray-700">
+                              <strong>Status:</strong> {sch.status}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-gray-500">No scheduled processes.</p>
+                    )}
                   </div>
 
                   <div className="col-span-2 flex justify-center mt-4">
