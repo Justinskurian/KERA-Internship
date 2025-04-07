@@ -44,7 +44,7 @@ const AssignMachines = () => {
     setError("");
     try {
       const response = await fetch(
-        `http://kera-internship.onrender.com/assign/assignMachines/${orderId}/${process}`,
+        `https://kera-internship.onrender.com/assign/assignMachines/${orderId}/${process}`,
         {
           method: "POST",
         }
@@ -62,7 +62,7 @@ const AssignMachines = () => {
   const handleUnassignMachine = async (orderId, machineId, process) => {
     try {
       const response = await fetch(
-        `http://kera-internship.onrender.com/assign/unassignMachine/${orderId}`,
+        `https://kera-internship.onrender.com/assign/unassignMachine/${orderId}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

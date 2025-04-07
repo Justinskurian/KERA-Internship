@@ -5,10 +5,10 @@ const orderRoute = require("./routes/orderRoute");
 const machineRoute = require("./routes/machineRoute");
 const scheduleRoute = require("./routes/scheduleRoute");
 const assignRoute = require("./routes/assignRoute");
-
 require("./dataBase/dbConnect");
 
 const app = express();
+app.use(express.json());
 
 app.use(cors());
 app.use("/order", orderRoute);
