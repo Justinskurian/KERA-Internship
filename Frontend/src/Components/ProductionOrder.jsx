@@ -84,37 +84,7 @@ const ProductionOrder = ({ child }) => {
                     </p>
                   </div>
 
-                  <div className="col-span-2">
-                    <p className="text-gray-500 font-semibold">Scheduled Processes:</p>
-                    {orderSchedules.length > 0 ? (
-                      <ul className="mt-2">
-                        {orderSchedules.map((sch, idx) => (
-                          <li
-                            key={idx}
-                            className="p-2 bg-white rounded shadow-sm border mt-1"
-                          >
-                            <p className="text-sm text-gray-700">
-                              <strong>Machine:</strong> {sch.machineId}
-                            </p>
-                            <p className="text-sm text-gray-700">
-                              <strong>Process:</strong> {sch.process}
-                            </p>
-                            <p className="text-sm text-gray-700">
-                              <strong>Start Time:</strong> {formatDateTime(sch.start_time)}
-                            </p>
-                            <p className="text-sm text-gray-700">
-                              <strong>End Time:</strong> {formatDateTime(sch.end_time)}
-                            </p>
-                            <p className="text-sm text-gray-700">
-                              <strong>Status:</strong> {sch.status}
-                            </p>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-sm text-gray-500">No scheduled processes.</p>
-                    )}
-                  </div>
+                 
 
                   <div className="col-span-2 flex justify-center mt-4">
                     <Link to="/details">

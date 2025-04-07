@@ -1,60 +1,94 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const Order = require("../models/orderModel"); 
-const Schedule = require("../models/scheduleModel"); 
+const Order = require("../models/orderModel");
+const Schedule = require("../models/scheduleModel");
 
 const router = express.Router();
 
-router.post("/assignMachines/:orderId", async (req, res) => {
+// Assign machines per process
+router.post("/assignMachines/:orderId/:process", async (req, res) => {
   try {
-    const { orderId } = req.params;
+    const { orderId, process } = req.params;
 
-    // Get the order
+    // 1. Find the order
     const order = await Order.findOne({ orderId });
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
     }
 
-    // Get all available machines sorted by process
-    const availableMachines = await Schedule.find({ status: "Idle" });
-
-    if (!availableMachines.length) {
-      return res.status(400).json({ error: "No available machines" });
+    // 2. Check if this process is already assigned in the order
+    const alreadyAssigned = order.assignedMachines.some(
+      (m) => m.process === process
+    );
+    if (alreadyAssigned) {
+      return res.status(400).json({ error: `Process '${process}' is already assigned` });
     }
 
-    const assignedMachines = [];
-
-    // Assign one machine per process
-    const assignedProcesses = new Set();
-    for (const machine of availableMachines) {
-      if (!assignedProcesses.has(machine.process)) {
-        assignedMachines.push({
-          machineId: machine.machineId,
-          process: machine.process,
-          start_time: machine.start_time,
-          end_time: machine.end_time,
-        });
-
-        assignedProcesses.add(machine.process);
-
-        // Update machine status to "Active"
-        await Schedule.updateOne(
-          { _id: machine._id },
-          { $set: { status: "Active" } }
-        );
-      }
+    // 3. Find an available (Idle) machine for the given process
+    const availableMachine = await Schedule.findOne({ process, status: "Idle" });
+    if (!availableMachine) {
+      return res.status(400).json({ error: `No available machine for process '${process}'` });
     }
 
-    // Update the order with assigned machines
-    await Order.updateOne(
-      { _id: order._id },
-      { $set: { assignedMachines } }
+    // 4. Assign it
+    const assignment = {
+      machineId: availableMachine.machineId,
+      process: availableMachine.process,
+      start_time: availableMachine.start_time,
+      end_time: availableMachine.end_time,
+    };
+
+    // 5. Push to assignedMachines and mark schedule as Active
+    order.assignedMachines.push(assignment);
+    await order.save();
+
+    await Schedule.updateOne(
+      { _id: availableMachine._id },
+      { $set: { status: "Active" } }
     );
 
-    res.json({ message: "Machines assigned successfully", assignedMachines });
+    res.status(200).json({
+      message: "Machine assigned successfully",
+      assignedMachines: order.assignedMachines,
+    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Server error" });
+    console.error("Error assigning machine:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Unassign a specific machine for a process
+router.post("/unassignMachine/:orderId", async (req, res) => {
+  const { orderId } = req.params;
+  const { machineId, process } = req.body;
+
+  try {
+    const order = await Order.findOne({ orderId });
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    // Filter out the machine from assignedMachines
+    const updatedMachines = order.assignedMachines.filter(
+      (m) => !(m.machineId === machineId && m.process === process)
+    );
+
+    order.assignedMachines = updatedMachines;
+    await order.save();
+
+    // Set the machine's status back to 'Idle'
+    await Schedule.findOneAndUpdate(
+      { machineId, process },
+      { status: "Idle" }
+    );
+
+    res.status(200).json({
+      message: "Machine unassigned successfully",
+      assignedMachines: updatedMachines,
+    });
+  } catch (err) {
+    console.error("Error unassigning machine:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
