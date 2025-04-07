@@ -35,6 +35,23 @@ const Home = ({ child }) => {
             </li>
             <li className="my-2">
               <a
+                href="/create"
+                className="flex items-center px-6 py-3 text-lg text-gray-600 hover:text-black hover:bg-gray-100 rounded-lg transition"
+              >
+                Create Order
+              </a>
+            </li>
+            <li className="my-2">
+              <a
+                href="/assign"
+                className="flex items-center px-6 py-3 text-lg text-gray-600 hover:text-black hover:bg-gray-100 rounded-lg transition"
+              >
+                Assign Machines
+              </a>
+            </li>
+
+            <li className="my-2">
+              <a
                 href="/details"
                 className="flex items-center px-6 py-3 text-lg text-gray-600 hover:text-black hover:bg-gray-100 rounded-lg transition"
               >
@@ -49,20 +66,12 @@ const Home = ({ child }) => {
                 Calender
               </a>
             </li>
-            <li className="my-2">
-              <a
-                href="/assign"
-                className="flex items-center px-6 py-3 text-lg text-gray-600 hover:text-black hover:bg-gray-100 rounded-lg transition"
-              >
-                Assign Machines
-              </a>
-            </li>
           </ul>
         </nav>
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex justify-center items-center min-h-screen ml-[250px] lg:ml-[300px] p-8">
+      <div className="flex-1 flex justify-center min-h-screen ml-[250px] lg:ml-[300px] p-8">
         {child}
       </div>
     </div>
