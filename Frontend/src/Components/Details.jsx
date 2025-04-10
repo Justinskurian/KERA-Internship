@@ -2,15 +2,22 @@ import axios from "axios";
 import React, { useEffect, useState } from "react";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
-import { format } from "date-fns";
+import { useParams } from "react-router-dom";
 
 const Details = () => {
+  const { orderId } = useParams(); 
   const [orders, setOrders] = useState([]);
   const [bom, setBom] = useState([]);
   const [filteredBOM, setFilteredBOM] = useState([]);
   const [orderQuantity, setOrderQuantity] = useState(null);
-  const [estimatedDelivery, setEstimatedDelivery] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
+
+  useEffect(() => {
+    if (orders.length > 0) {
+      const matchedOrder = orders.find((order) => order._id === orderId);
+      setSelectedOrder(matchedOrder || orders[0]);
+    }
+  }, [orders, orderId]);
 
   useEffect(() => {
     axios
@@ -25,44 +32,18 @@ const Details = () => {
   }, []);
 
   useEffect(() => {
-    if (orders.length > 0) {
-      setSelectedOrder(orders[0]); // Default to the first order
-    }
-  }, [orders]);
-
-  useEffect(() => {
     if (selectedOrder && bom.length > 0) {
       setOrderQuantity(selectedOrder.quantity);
-            setFilteredBOM(bom);  
-  
-      if (bom.length > 0) {
-        const latestProcess = bom.reduce((latest, process) =>
-          new Date(process.end_time) > new Date(latest.end_time) ? process : latest
-        );
-  
-        setEstimatedDelivery(
-          new Intl.DateTimeFormat("en-GB", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-            timeZone: "UTC",
-          }).format(new Date(latestProcess.end_time))
-        );
-      } else {
-        setEstimatedDelivery(null);
-      }
+      setFilteredBOM(bom);
     }
   }, [selectedOrder, bom]);
-  
 
   return (
     <div className="w-full flex flex-col items-center">
-            <h2 className="text-4xl font-semibold text-gray-700 text-center mb-6">
+      <h2 className="text-4xl font-semibold text-gray-700 text-center mb-6">
         Order Details
       </h2>
+
       {/* Order Selection Dropdown */}
       <div className="w-full max-w-5xl bg-white shadow-lg rounded-2xl p-8 mb-8">
         <label className="block text-lg font-semibold text-gray-700 mb-2">
@@ -72,7 +53,9 @@ const Details = () => {
           className="w-full p-2 border rounded-md"
           value={selectedOrder?._id || ""}
           onChange={(e) =>
-            setSelectedOrder(orders.find((order) => order._id === e.target.value))
+            setSelectedOrder(
+              orders.find((order) => order._id === e.target.value)
+            )
           }
         >
           {orders.map((order) => (
@@ -86,42 +69,17 @@ const Details = () => {
       {/* Calendar Section */}
       <div className="w-full max-w-5xl bg-white shadow-lg rounded-2xl p-8 mb-8">
         <h2 className="text-2xl font-bold text-gray-700 text-center mb-6">
-          Estimated Delivery:
-          <span className="font-bold text-orange-600">
-            {" "}
-            {estimatedDelivery || "Calculating..."}
-          </span>
+          Estimated Delivery:{" "}
+          <span className="font-bold text-orange-600">N/A</span>
         </h2>
 
         <div className="flex justify-center">
           <div className="p-6 bg-white bg-opacity-80 backdrop-blur-lg shadow-lg rounded-xl">
             <Calendar
               className="rounded-lg shadow-md p-4 text-gray-800 w-full transition-all transform hover:scale-101"
-              tileClassName={({ date }) => {
-                const formattedDate = format(date, "yyyy-MM-dd");
-                return filteredBOM.some(
-                  (b) =>
-                    formattedDate ===
-                      format(new Date(b.start_time), "yyyy-MM-dd") ||
-                    formattedDate === format(new Date(b.end_time), "yyyy-MM-dd")
-                )
-                  ? "bg-gradient-to-r from-orange-400 to-orange-600 text-white font-bold rounded-lg hover:scale-110 transition-transform"
-                  : "hover:bg-gray-200 rounded-lg transition-all";
-              }}
-              tileContent={({ date }) => {
-                const formattedDate = format(date, "yyyy-MM-dd");
-                const process = filteredBOM.find(
-                  (b) =>
-                    formattedDate ===
-                    format(new Date(b.start_time), "yyyy-MM-dd")
-                )?.process;
-
-                return process ? (
-                  <div className="bg-orange-600 text-white text-xs p-1 rounded-md shadow-md">
-                    {process}
-                  </div>
-                ) : null;
-              }}
+              tileClassName={() =>
+                "hover:bg-gray-200 rounded-lg transition-all"
+              }
             />
           </div>
         </div>
@@ -136,41 +94,10 @@ const Details = () => {
                 {bom.process}
               </h3>
 
-              <div className="text-gray-700 text-sm space-y-2">
-                <p>
-                  <strong>Start:</strong>{" "}
-                  {bom.start_time
-                    ? new Intl.DateTimeFormat("en-GB", {
-                        year: "numeric",
-                        month: "2-digit",
-                        day: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: true,
-                        timeZone: "UTC",
-                      }).format(new Date(bom.start_time))
-                    : "N/A"}
-                </p>
-                <p>
-                  <strong>End:</strong>{" "}
-                  {bom.end_time
-                    ? new Intl.DateTimeFormat("en-GB", {
-                        year: "numeric",
-                        month: "2-digit",
-                        day: "2-digit",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: true,
-                        timeZone: "UTC",
-                      }).format(new Date(bom.end_time))
-                    : "N/A"}
-                </p>
-              </div>
-
               <div className="text-center text-gray-700 text-lg font-medium mt-4">
                 Quantity:{" "}
                 <span className="font-bold text-orange-600">
-                  {orderQuantity}
+                  {orderQuantity * bom.unitMaterialPerProduct}
                 </span>
               </div>
 
@@ -184,7 +111,9 @@ const Details = () => {
                       <li key={idx} className="text-sm flex justify-between">
                         <span>{component.name}</span>
                         <span className="text-right">
-                          {component.quantity_per_kg * orderQuantity}{" "}
+                          {component.quantity_per_kg *
+                            orderQuantity *
+                            bom.unitMaterialPerProduct}{" "}
                           {component.unit}
                         </span>
                       </li>

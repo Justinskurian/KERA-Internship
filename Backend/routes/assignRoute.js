@@ -1,19 +1,17 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const Order = require("../models/orderModel");
-const Schedule = require("../models/scheduleModel");
+const Machine = require("../models/machineModel");
+const Schedule = require("../models/scheduleModel"); 
 
 const router = express.Router();
 
-// ✅ Assign machines per process
 router.post("/assignMachines/:orderId/:process", async (req, res) => {
   try {
     const { orderId, process } = req.params;
 
     const order = await Order.findOne({ orderId });
-    if (!order) {
-      return res.status(404).json({ error: "Order not found" });
-    }
+    if (!order) return res.status(404).json({ error: "Order not found" });
 
     const alreadyAssigned = order.assignedMachines.some(
       (m) => m.process === process
@@ -22,77 +20,92 @@ router.post("/assignMachines/:orderId/:process", async (req, res) => {
       return res.status(400).json({ error: `Process '${process}' is already assigned` });
     }
 
-    const availableMachine = await Schedule.findOne({ process, status: "Idle" });
-    if (!availableMachine) {
-      return res.status(400).json({ error: `No available machine for process '${process}'` });
+    // Find matching machine config for the process
+    const machineOptions = await Machine.find({ process });
+    if (!machineOptions.length) {
+      return res.status(404).json({ error: `No machine found for process '${process}'` });
     }
 
-    const assignment = {
-      machineId: availableMachine.machineId,
-      process: availableMachine.process,
-      start_time: availableMachine.start_time,
-      end_time: availableMachine.end_time,
-    };
-
-    order.assignedMachines.push(assignment);
-    await order.save();
-
-    await Schedule.updateOne(
-      { _id: availableMachine._id },
-      { $set: { status: "Active" } }
+    // Sort machines by earliest available end_time
+    const machineSchedules = await Promise.all(
+      machineOptions.map(async (machine) => {
+        const scheduled = await Schedule.find({ machineId: machine.name }).sort({ end_time: -1 }).limit(1);
+        const lastEnd = scheduled.length ? new Date(scheduled[0].end_time) : new Date();
+        return { machine, availableFrom: lastEnd };
+      })
     );
 
+    machineSchedules.sort((a, b) => a.availableFrom - b.availableFrom);
+    const best = machineSchedules[0];
+    const { machine, availableFrom } = best;
+
+    // Get previous process end time
+    const processOrder = ["COMPOUND MIXING", "TUFTING", "CUTTING", "PRINTING", "LABELLING & PACKING"];
+    const currentIndex = processOrder.indexOf(process);
+    let earliestStart = new Date(availableFrom);
+
+    if (currentIndex > 0) {
+      const previous = order.assignedMachines.find(m => m.process === processOrder[currentIndex - 1]);
+      if (previous) {
+        const prevEnd = new Date(previous.end_time);
+        if (prevEnd > earliestStart) earliestStart = prevEnd;
+      }
+    }
+
+    const {
+      batch_size,
+      timePerProduct,
+      unitMaterialPerProduct,
+      efficiency
+    } = machine;
+
+    const totalQty = order.quantity;
+    const batches = Math.ceil(totalQty / batch_size);
+    const assignments = [];
+
+    let currentStart = new Date(earliestStart);
+
+    for (let i = 0; i < batches; i++) {
+      const qty = (i === batches - 1) ? totalQty - i * batch_size : batch_size;
+      const processTimeMin = (qty * unitMaterialPerProduct * timePerProduct) / efficiency; // in minutes
+      const end = new Date(currentStart.getTime() + processTimeMin * 60000);
+
+      const scheduleEntry = new Schedule({
+        process,
+        machineId: machine.name,
+        status: "Active",
+        start_time: currentStart,
+        end_time: end,
+      });
+
+      await scheduleEntry.save();
+
+      assignments.push({
+        machineId: machine.name,
+        process,
+        start_time: currentStart,
+        end_time: end,
+      });
+
+      currentStart = new Date(end);
+    }
+
+    // Update order
+    order.assignedMachines.push({
+      machineId: machine.name,
+      process,
+      start_time: assignments[0].start_time,
+      end_time: assignments[assignments.length - 1].end_time,
+    });
+    await order.save();
+
     res.status(200).json({
-      message: "Machine assigned successfully",
+      message: "Machine(s) assigned and scheduled successfully",
       assignedMachines: order.assignedMachines,
     });
   } catch (error) {
-    console.error("Error assigning machine:", error);
+    console.error("Assignment error:", error);
     res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// ✅ Unassign machine
-router.post("/unassignMachine/:orderId", async (req, res) => {
-  const { orderId } = req.params;
-  const { machineId, process } = req.body;
-  if (!machineId || !process) {
-    return res.status(400).json({ error: "machineId and process are required in the request body." });
-  }
-
-  try {
-    const order = await Order.findOne({ orderId });
-    if (!order) {
-      return res.status(404).json({ error: "Order not found" });
-    }
-
-    const exists = order.assignedMachines.some(
-      (m) => m.machineId === machineId && m.process === process
-    );
-    if (!exists) {
-      return res.status(400).json({ error: "Machine assignment not found for this process." });
-    }
-
-    order.assignedMachines = order.assignedMachines.filter(
-      (m) => !(m.machineId === machineId && m.process === process)
-    );
-    await order.save();
-
-    const updatedSchedule = await Schedule.findOneAndUpdate(
-      { machineId, process },
-      { status: "Idle" },
-      { new: true }
-    );
-
-    console.log("Unassigned and updated machine schedule:", updatedSchedule);
-
-    return res.status(200).json({
-      message: "Machine unassigned successfully.",
-      assignedMachines: order.assignedMachines,
-    });
-  } catch (err) {
-    console.error("❌ Error unassigning machine:", err);
-    return res.status(500).json({ error: "Internal server error" });
   }
 });
 

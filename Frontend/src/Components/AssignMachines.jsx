@@ -5,6 +5,7 @@ const AssignMachines = () => {
   const [selectedOrderId, setSelectedOrderId] = useState("");
   const [assignedMachines, setAssignedMachines] = useState([]);
   const [machineData, setMachineData] = useState([]);
+  const [fullMachineDetails, setFullMachineDetails] = useState([]);
   const [selectedMachines, setSelectedMachines] = useState({});
   const [error, setError] = useState("");
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -13,12 +14,14 @@ const AssignMachines = () => {
     "COMPOUND MIXING",
     "TUFTING",
     "CUTTING",
+    "PRINTING",
     "LABELLING & PACKING",
   ];
 
   useEffect(() => {
     fetchOrders();
     fetchMachines();
+    fetchFullMachineDetails();
   }, []);
 
   const fetchOrders = async () => {
@@ -38,6 +41,16 @@ const AssignMachines = () => {
       setMachineData(data);
     } catch (err) {
       setError("Failed to fetch machines");
+    }
+  };
+
+  const fetchFullMachineDetails = async () => {
+    try {
+      const res = await fetch("https://kera-internship.onrender.com/machine");
+      const data = await res.json();
+      setFullMachineDetails(data);
+    } catch (err) {
+      setError("Failed to fetch machine details");
     }
   };
 
@@ -98,10 +111,10 @@ const AssignMachines = () => {
       <h2 className="text-4xl font-semibold text-gray-700 text-center mb-6">
         Assign Machines
       </h2>
-  
+
       <div className="w-full bg-white shadow-2xl rounded-2xl p-10">
         {error && <p className="text-red-500 mb-4">{error}</p>}
-  
+
         <label className="block mb-2 text-lg font-medium">Select Order</label>
         <select
           value={selectedOrderId}
@@ -115,10 +128,10 @@ const AssignMachines = () => {
             </option>
           ))}
         </select>
-  
+
         {selectedOrderId && (
           <div className="flex flex-col lg:flex-row gap-10">
-            {/* Left Column: Order details + Assignment */}
+            {/* Left Column */}
             <div className="w-full lg:w-1/2 space-y-8">
               <div className="bg-gray-100 p-6 rounded shadow">
                 <h3 className="font-semibold text-xl mb-3">Order Details</h3>
@@ -132,8 +145,25 @@ const AssignMachines = () => {
                   <strong>Order Date:</strong>{" "}
                   {new Date(selectedOrder.orderDate).toLocaleDateString()}
                 </p>
+
+                {/* Delivery Date */}
+                {(() => {
+                  const finalProcess = "LABELLING & PACKING";
+                  const finalMachine = assignedMachines.find(
+                    (m) => m.process === finalProcess
+                  );
+
+                  if (!finalMachine) return null;
+
+                  return (
+                    <p className="text-orange-600 font-semibold mt-2">
+                      Delivery Date:{" "}
+                      {new Date(finalMachine.end_time).toLocaleString()}
+                    </p>
+                  );
+                })()}
               </div>
-  
+
               <div className="bg-gray-50 p-6 rounded shadow">
                 <h3 className="font-semibold text-xl mb-4">Assign Processes</h3>
                 {processTypes.map((process) => (
@@ -170,48 +200,71 @@ const AssignMachines = () => {
                 ))}
               </div>
             </div>
-  
-            {/* Right Column: Assigned Machines */}
+
+            {/* Right Column */}
             <div className="w-full lg:w-1/2 bg-gray-50 p-6 rounded shadow h-fit">
               <h3 className="font-semibold text-xl mb-4">Assigned Machines</h3>
-  
+
               {assignedMachines.length > 0 ? (
                 <ul className="space-y-4">
-                  {assignedMachines.map((machine, index) => (
-                    <li
-                      key={index}
-                      className="bg-white p-4 rounded shadow flex flex-col"
-                    >
-                      <div className="mb-2">
-                        <p>
-                          <strong>Machine:</strong> {machine.machineId}
-                        </p>
-                        <p>
-                          <strong>Process:</strong> {machine.process}
-                        </p>
-                        <p>
-                          <strong>Start:</strong>{" "}
-                          {new Date(machine.start_time).toLocaleString()}
-                        </p>
-                        <p>
-                          <strong>End:</strong>{" "}
-                          {new Date(machine.end_time).toLocaleString()}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() =>
-                          handleUnassignMachine(
-                            selectedOrderId,
-                            machine.machineId,
-                            machine.process
-                          )
-                        }
-                        className="bg-red-500 text-white px-3 py-1 rounded self-end"
+                  {assignedMachines.map((machine, index) => {
+                    const start = new Date(machine.start_time);
+                    const fullDetails = fullMachineDetails.find(
+                      (m) => m.process === machine.process
+                    );
+
+                    const unitMaterialPerProduct = Number(
+                      fullDetails?.unitMaterialPerProduct || 0
+                    );
+                    const timePerProduct = Number(
+                      fullDetails?.timePerProduct || 0
+                    );
+                    const quantity = Number(selectedOrder?.quantity || 0);
+
+                    const totalHours =
+                      quantity * unitMaterialPerProduct * timePerProduct;
+
+                    const end = new Date(
+                      start.getTime() + totalHours * 60 * 60 * 1000
+                    );
+
+                    return (
+                      <li
+                        key={index}
+                        className="bg-white p-4 rounded shadow flex flex-col"
                       >
-                        Unassign
-                      </button>
-                    </li>
-                  ))}
+                        <div className="mb-2">
+                          <p>
+                            <strong>Machine:</strong> {machine.machineId}
+                          </p>
+                          <p>
+                            <strong>Process:</strong> {machine.process}
+                          </p>
+                          <p>
+                            <strong>Start:</strong> {start.toLocaleString()}
+                          </p>
+                          <p>
+                            <strong>Calculated End:</strong>{" "}
+                            {isNaN(end.getTime())
+                              ? "Invalid End Time"
+                              : end.toLocaleString()}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() =>
+                            handleUnassignMachine(
+                              selectedOrderId,
+                              machine.machineId,
+                              machine.process
+                            )
+                          }
+                          className="bg-red-500 text-white px-3 py-1 rounded self-end"
+                        >
+                          Unassign
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : (
                 <p className="text-gray-500">No machines assigned yet.</p>
@@ -222,7 +275,6 @@ const AssignMachines = () => {
       </div>
     </div>
   );
-  
 };
 
 export default AssignMachines;
