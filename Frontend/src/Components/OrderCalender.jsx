@@ -9,7 +9,7 @@ const OrderCalendar = () => {
 
   useEffect(() => {
     axios
-      .get("https://kera-internship.onrender.com/order")
+      .get("https://kera-internship.onrender.com/schedule")
       .then((res) => setOrders(res.data))
       .catch((error) => console.error("Error fetching orders:", error));
   }, []);

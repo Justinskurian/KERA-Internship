@@ -12,6 +12,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home child={<ProductionOrder/>} />}></Route>
         <Route path="/details/:orderId" element={<Home child={<Details />}/>}></Route>
+        <Route path="/details/" element={<Home child={<Details />}/>}></Route>
         <Route path="/calender" element={<Home child={<OrderCalendar />}/>}></Route>
         <Route path="/assign" element={<Home child={<AssignMachines />}/>}></Route>
       </Routes>
