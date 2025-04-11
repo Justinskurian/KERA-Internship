@@ -51,14 +51,14 @@ const Home = ({ child }) => {
                 Order Details
               </a>
             </li>
-            <li className="my-2">
+            {/* <li className="my-2">
               <a
                 href="/calender"
                 className="flex items-center px-6 py-3 text-lg text-gray-600 hover:text-black hover:bg-gray-100 rounded-lg transition"
               >
                 Calender
               </a>
-            </li>
+            </li> */}
           </ul>
         </nav>
       </aside>
