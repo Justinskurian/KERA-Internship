@@ -58,18 +58,32 @@ router.post("/assignMachines/:orderId/:process", async (req, res) => {
       unitMaterialPerProduct,
       efficiency
     } = machine;
-
+    
+    if (
+      batch_size == null ||
+      unitMaterialPerProduct == null ||
+      timePerProduct == null ||
+      efficiency == null
+    ) {
+      return res.status(400).json({
+        error: `Machine config missing values for '${machine.name}'`,
+      });
+    }
+    
+    console.log("Scheduling", batches, "batches for process", process);
+    
     const totalQty = order.quantity;
-    const batches = Math.ceil(totalQty / batch_size);
+    const batches = Math.max(1, Math.ceil(totalQty / batch_size));
     const assignments = [];
-
+    
     let currentStart = new Date(earliestStart);
-
+    
     for (let i = 0; i < batches; i++) {
-      const qty = (i === batches - 1) ? totalQty - i * batch_size : batch_size;
-      const processTimeMin = (qty * unitMaterialPerProduct * timePerProduct) / efficiency; // in minutes
+      const qty = i === batches - 1 ? totalQty - i * batch_size : batch_size;
+      const processTimeMin = (qty * unitMaterialPerProduct * timePerProduct) / efficiency;
+    
       const end = new Date(currentStart.getTime() + processTimeMin * 60000);
-
+    
       const scheduleEntry = new Schedule({
         process,
         machineId: machine.name,
@@ -77,18 +91,21 @@ router.post("/assignMachines/:orderId/:process", async (req, res) => {
         start_time: currentStart,
         end_time: end,
       });
-
+    
+      console.log("Saving schedule entry:", scheduleEntry);
+    
       await scheduleEntry.save();
-
+    
       assignments.push({
         machineId: machine.name,
         process,
         start_time: currentStart,
         end_time: end,
       });
-
+    
       currentStart = new Date(end);
     }
+    
 
     // Update order
     order.assignedMachines.push({
