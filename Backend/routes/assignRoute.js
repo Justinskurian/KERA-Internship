@@ -125,5 +125,11 @@ router.post("/assignMachines/:orderId/:process", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+console.log("Assigning process:", process, "for order:", orderId);
+console.log("Order fetched:", order);
+console.log("Available machines:", machineOptions);
+console.log("Sorted machine schedules:", machineSchedules);
+console.log("Selected machine:", machine.name, "available from:", availableFrom);
+
 
 module.exports = router;
