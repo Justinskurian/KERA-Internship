@@ -11,6 +11,12 @@ const machineSchema = mongoose.Schema({
   efficiency: { type: Number },
   end_time: { type: Date },
   start_time: { type: Date },
+  status: {
+    type: String,
+    enum: ["Pending", "Scheduled", "Ready to Deliver", "Deliverd"],
+    default: "Pending",
+  },
+
   components: [
     {
       name: { type: String, required: true },

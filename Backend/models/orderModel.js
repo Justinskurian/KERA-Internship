@@ -9,6 +9,7 @@ const orderSchema = new mongoose.Schema({
   rate: String,
   orderDate: Date,
   deliveryDate: Date,
+  isNonChangeable: { type: Boolean, default: false }, // For scheduling lock
   assignedMachines: [
     {
       machineId: String,

@@ -18,6 +18,10 @@ const scheduleSchema = mongoose.Schema({
     type: Date,
     required: true,
   },
+  batch_size: { type: Number, required: true },
+  timeForOneBatch: { type: Number, required: true },
+  time_per_product: { type: Number, required: true },
+  unit_material_per_product: { type: Number, required: true },
   status: {
     type: String,
     enum: ["Active", "Idle"],

@@ -5,6 +5,7 @@ const orderRoute = require("./routes/orderRoute");
 const machineRoute = require("./routes/machineRoute");
 const scheduleRoute = require("./routes/scheduleRoute");
 const assignRoute = require("./routes/assignRoute");
+const bomRoute = require("./routes/bomRoutes");
 require("./dataBase/dbConnect");
 
 const app = express();
@@ -15,6 +16,7 @@ app.use("/order", orderRoute);
 app.use("/machine", machineRoute);
 app.use("/schedule", scheduleRoute);
 app.use("/assign", assignRoute);
+app.use("/bom", bomRoute);
 
 app.listen(process.env.port, () => {
   console.log(`server is running on ${process.env.port}`);
