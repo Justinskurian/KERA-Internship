@@ -13,6 +13,7 @@ const stageSchema = new mongoose.Schema({
   stageName: { type: String, required: true },          // Operation name (e.g., COMPOUND MIXING)
   minQtyForNextStage: { type: Number, required: true }, // Minimum quantity for next stage (e.g., 2000)
   hoursRequiredMinQty: { type: Number, required: true },      // Hours for minQtyForNextStage
+  unitMaterialPerProduct: { type: Number, required: true },  // Unit material per product
   components: [componentSchema],                        // List of components for the stage
 });
 
