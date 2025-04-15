@@ -26,7 +26,7 @@ const AssignMachines = () => {
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch("https://kera-internship.onrender.com/order");
+      const res = await fetch("http://localhost:3000/order");
       const data = await res.json();
       setOrders(data);
     } catch (err) {
@@ -36,7 +36,7 @@ const AssignMachines = () => {
 
   const fetchMachines = async () => {
     try {
-      const res = await fetch("https://kera-internship.onrender.com/schedule");
+      const res = await fetch("http://localhost:3000/schedule");
       const data = await res.json();
       setMachineData(data);
     } catch (err) {
@@ -46,7 +46,7 @@ const AssignMachines = () => {
 
   const fetchFullMachineDetails = async () => {
     try {
-      const res = await fetch("https://kera-internship.onrender.com/machine");
+      const res = await fetch("http://localhost:3000/machine");
       const data = await res.json();
       setFullMachineDetails(data);
     } catch (err) {
@@ -60,7 +60,7 @@ const AssignMachines = () => {
 
     try {
       const response = await fetch(
-        `https://kera-internship.onrender.com/assign/assignMachines/${orderId}/${process}`,
+        `http://localhost:3000/assign/assignMachines/${orderId}/${process}`,
         { method: "POST" }
       );
       const data = await response.json();
@@ -77,7 +77,7 @@ const AssignMachines = () => {
   const handleUnassignMachine = async (orderId, machineId, process) => {
     try {
       const response = await fetch(
-        `https://kera-internship.onrender.com/assign/unassignMachine/${orderId}`,
+        `http://localhost:3000/assign/unassignMachine/${orderId}/${process}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -96,7 +96,9 @@ const AssignMachines = () => {
   };
 
   const getAvailableMachines = (process) => {
-    return machineData.filter((m) => m.process === process);
+    return machineData
+      .filter((m) => m.process === process)
+      .sort((a, b) => a.status.localeCompare(b.status));
   };
 
   const handleOrderChange = (orderId) => {
@@ -104,6 +106,7 @@ const AssignMachines = () => {
     const order = orders.find((o) => o.orderId === orderId);
     setSelectedOrder(order || null);
     setAssignedMachines(order?.assignedMachines || []);
+    setSelectedMachines({});
   };
 
   return (
@@ -146,19 +149,40 @@ const AssignMachines = () => {
                   {new Date(selectedOrder.orderDate).toLocaleDateString()}
                 </p>
 
-                {/* Delivery Date */}
+                {/* Calculated Delivery Date */}
                 {(() => {
                   const finalProcess = "LABELLING & PACKING";
                   const finalMachine = assignedMachines.find(
                     (m) => m.process === finalProcess
                   );
+                  const fullDetails = fullMachineDetails.find(
+                    (m) => m.process === finalProcess
+                  );
 
-                  if (!finalMachine) return null;
+                  if (!finalMachine || !fullDetails) return null;
+
+                  const quantity = Number(selectedOrder?.quantity || 0);
+                  const unitMaterialPerProduct = Number(
+                    fullDetails.unitMaterialPerProduct || 0
+                  );
+                  const timePerProduct = Number(
+                    fullDetails.timePerProduct || 0
+                  );
+
+                  const totalHours =
+                    quantity * unitMaterialPerProduct * timePerProduct;
+
+                  const end = new Date(
+                    new Date(finalMachine.start_time).getTime() +
+                      totalHours * 60 * 60 * 1000
+                  );
 
                   return (
                     <p className="text-orange-600 font-semibold mt-2">
                       Delivery Date:{" "}
-                      {new Date(finalMachine.end_time).toLocaleString()}
+                      {isNaN(end.getTime())
+                        ? "Invalid End Time"
+                        : end.toLocaleString()}
                     </p>
                   );
                 })()}
@@ -188,10 +212,18 @@ const AssignMachines = () => {
                         ))}
                       </select>
                       <button
+                        disabled={!selectedMachines[process]}
                         onClick={() =>
-                          handleAssignMachineToProcess(selectedOrderId, process)
+                          handleAssignMachineToProcess(
+                            selectedOrderId,
+                            process
+                          )
                         }
-                        className="bg-orange-600 text-white px-4 py-2 rounded"
+                        className={`${
+                          selectedMachines[process]
+                            ? "bg-orange-600"
+                            : "bg-orange-300 cursor-not-allowed"
+                        } text-white px-4 py-2 rounded`}
                       >
                         Assign
                       </button>

@@ -9,6 +9,7 @@ const orderSchema = new mongoose.Schema({
   rate: String,
   orderDate: Date,
   deliveryDate: Date,
+  status: { type: String, enum: ['Pending', 'Scheduled','Ready to Deliver', 'Deliverd'], default: 'Pending' },
   isNonChangeable: { type: Boolean, default: false }, // For scheduling lock
   assignedMachines: [
     {
