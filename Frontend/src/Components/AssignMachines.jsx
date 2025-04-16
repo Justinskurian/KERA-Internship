@@ -9,6 +9,7 @@ const AssignMachines = () => {
   const [selectedMachines, setSelectedMachines] = useState({});
   const [error, setError] = useState("");
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [batches, setBatches] = useState({});
 
   const processTypes = [
     "COMPOUND MIXING",
@@ -107,6 +108,18 @@ const AssignMachines = () => {
     setSelectedOrder(order || null);
     setAssignedMachines(order?.assignedMachines || []);
     setSelectedMachines({});
+    if (order) {
+      const newBatches = {};
+      processTypes.forEach((process) => {
+        const machine = fullMachineDetails.find((m) => m.process === process);
+        if (machine) {
+          const required = machine.unitMaterialPerProduct * order.quantity;
+          const numBatches = Math.ceil(required / machine.batch_size);
+          newBatches[process] = numBatches;
+        }
+      });
+      setBatches(newBatches);
+    }
   };
 
   return (
@@ -148,7 +161,6 @@ const AssignMachines = () => {
                   <strong>Order Date:</strong>{" "}
                   {new Date(selectedOrder.orderDate).toLocaleDateString()}
                 </p>
-                
 
                 {/* Calculated Delivery Date */}
                 {(() => {
@@ -192,8 +204,13 @@ const AssignMachines = () => {
               <div className="bg-gray-50 p-6 rounded shadow">
                 <h3 className="font-semibold text-xl mb-4">Assign Processes</h3>
                 {processTypes.map((process) => (
-                  <div key={process} className="mb-4">
+                  <div key={process} className="mb-6">
                     <p className="mb-1 font-medium">{process}</p>
+                    {batches[process] && (
+                      <p className="text-sm text-gray-600 mb-1">
+                        Estimated Batches: <strong>{batches[process]}</strong>
+                      </p>
+                    )}
                     <div className="flex gap-2">
                       <select
                         className="border p-2 rounded w-full"
@@ -241,8 +258,6 @@ const AssignMachines = () => {
               {assignedMachines.length > 0 ? (
                 <ul className="space-y-4">
                   {assignedMachines.map((machine, index) => {
-
-
                     const start = new Date(machine.start_time);
                     const fullDetails = fullMachineDetails.find(
                       (m) => m.process === machine.process
@@ -285,19 +300,6 @@ const AssignMachines = () => {
                               : end.toLocaleString()}
                           </p>
                         </div>
- {/* 🧪 Batches */}
- {machine.batches?.length > 0 && (
-      <div className="mt-2">
-        <p><strong>Total Batches:</strong> {machine.batches.length}</p>
-        <ul className="list-disc list-inside text-sm">
-          {machine.batches.map((batch, idx) => (
-            <li key={idx}>
-              Batch {batch.batchNumber}: {batch.quantity} units
-            </li>
-          ))}
-        </ul>
-      </div>
-    )}
 
                         <button
                           onClick={() =>

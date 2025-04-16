@@ -27,7 +27,7 @@ const Home = ({ child }) => {
           <ul className="flex flex-col w-full font-medium">
             <li className="my-2">
               <a
-                href="/"
+                href="/home"
                 className="flex items-center px-6 py-3 text-lg text-gray-600 hover:text-black hover:bg-gray-100 rounded-lg transition"
               >
                 Production Orders
