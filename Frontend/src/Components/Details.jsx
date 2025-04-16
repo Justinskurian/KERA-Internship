@@ -5,12 +5,13 @@ import "react-calendar/dist/Calendar.css";
 import { useParams } from "react-router-dom";
 
 const Details = () => {
-  const { orderId } = useParams(); 
+  const { orderId } = useParams();
   const [orders, setOrders] = useState([]);
   const [bom, setBom] = useState([]);
   const [filteredBOM, setFilteredBOM] = useState([]);
   const [orderQuantity, setOrderQuantity] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [scheduleData, setScheduleData] = useState([]);
 
   useEffect(() => {
     if (orders.length > 0) {
@@ -29,6 +30,11 @@ const Details = () => {
       .get("https://kera-internship.onrender.com/machine")
       .then((res) => setBom(res.data))
       .catch((error) => console.error("Error fetching BOM:", error));
+
+    axios
+      .get("https://kera-internship.onrender.com/schedule")
+      .then((res) => setScheduleData(res.data))
+      .catch((error) => console.error("Error fetching schedule:", error));
   }, []);
 
   useEffect(() => {
@@ -37,6 +43,24 @@ const Details = () => {
       setFilteredBOM(bom);
     }
   }, [selectedOrder, bom]);
+
+  const deliveryDate = selectedOrder?.deliveryDate
+    ? new Date(selectedOrder.deliveryDate)
+    : null;
+
+  const machineWorkingDates = scheduleData
+    .filter((entry) => selectedOrder && entry.orderId === selectedOrder.orderId)
+    .flatMap((entry) => {
+      const dates = [];
+      const start = new Date(entry.start_time);
+      const end = new Date(entry.end_time);
+
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        dates.push(new Date(d).toDateString()); // Convert to string for comparison
+      }
+
+      return dates;
+    });
 
   return (
     <div className="w-full flex flex-col items-center">
@@ -70,15 +94,19 @@ const Details = () => {
       <div className="w-full max-w-5xl bg-white shadow-lg rounded-2xl p-8 mb-8">
         <h2 className="text-2xl font-bold text-gray-700 text-center mb-6">
           Estimated Delivery:{" "}
-          <span className="font-bold text-orange-600">N/A</span>
+          <span className="font-bold text-orange-600">
+            {deliveryDate ? deliveryDate.toDateString() : "N/A"}
+          </span>
         </h2>
 
         <div className="flex justify-center">
           <div className="p-6 bg-white bg-opacity-80 backdrop-blur-lg shadow-lg rounded-xl">
             <Calendar
               className="rounded-lg shadow-md p-4 text-gray-800 w-full transition-all transform hover:scale-101"
-              tileClassName={() =>
-                "hover:bg-gray-200 rounded-lg transition-all"
+              tileClassName={({ date }) =>
+                machineWorkingDates.includes(date.toDateString())
+                  ? "bg-orange-200 font-semibold rounded-lg"
+                  : "hover:bg-gray-200 rounded-lg transition-all"
               }
             />
           </div>

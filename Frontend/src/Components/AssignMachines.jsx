@@ -148,6 +148,7 @@ const AssignMachines = () => {
                   <strong>Order Date:</strong>{" "}
                   {new Date(selectedOrder.orderDate).toLocaleDateString()}
                 </p>
+                
 
                 {/* Calculated Delivery Date */}
                 {(() => {
@@ -240,6 +241,8 @@ const AssignMachines = () => {
               {assignedMachines.length > 0 ? (
                 <ul className="space-y-4">
                   {assignedMachines.map((machine, index) => {
+
+
                     const start = new Date(machine.start_time);
                     const fullDetails = fullMachineDetails.find(
                       (m) => m.process === machine.process
@@ -282,6 +285,20 @@ const AssignMachines = () => {
                               : end.toLocaleString()}
                           </p>
                         </div>
+ {/* 🧪 Batches */}
+ {machine.batches?.length > 0 && (
+      <div className="mt-2">
+        <p><strong>Total Batches:</strong> {machine.batches.length}</p>
+        <ul className="list-disc list-inside text-sm">
+          {machine.batches.map((batch, idx) => (
+            <li key={idx}>
+              Batch {batch.batchNumber}: {batch.quantity} units
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+
                         <button
                           onClick={() =>
                             handleUnassignMachine(

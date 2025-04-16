@@ -11,68 +11,114 @@ router.post("/assignMachines/:orderId/:process", async (req, res) => {
   try {
     const { orderId, process } = req.params;
 
-    // Fetch the order
     const order = await Order.findOne({ orderId });
-    if (!order) return res.status(404).json({ error: "Order not found" });
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
+    }
 
-    // Check if the process is already assigned
     const alreadyAssigned = order.assignedMachines.some(
       (m) => m.process === process
     );
     if (alreadyAssigned) {
-      return res.status(400).json({ error: `Process '${process}' is already assigned` });
+      return res
+        .status(400)
+        .json({ error: `Process '${process}' is already assigned` });
     }
 
-    // Find a machine for the process
-    const machine = await Machine.findOne({ process });
-    if (!machine) {
-      return res.status(404).json({ error: `No machine found for process '${process}'` });
-    }
-
-    // Assign the machine (no scheduling logic)
-    order.assignedMachines.push({
-      machineId: machine.name,
+    const availableMachine = await Schedule.findOne({
       process,
+      status: "Idle",
     });
+    if (!availableMachine) {
+      return res
+        .status(400)
+        .json({ error: `No available machine for process '${process}'` });
+    }
 
+    // 🧮 Calculate batch split
+    const totalQty = order.quantity;
+    const batchSize = availableMachine.batch_size;
+    const batchCount = Math.ceil(totalQty / batchSize);
+
+    const batches = [];
+    for (let i = 0; i < batchCount; i++) {
+      const qty = i === batchCount - 1 ? totalQty - i * batchSize : batchSize;
+      batches.push({ batchNumber: i + 1, quantity: qty });
+    }
+
+    const assignment = {
+      machineId: availableMachine.machineId,
+      process: availableMachine.process,
+      start_time: availableMachine.start_time,
+      end_time: availableMachine.end_time,
+      batches, // 💡 add batch info
+    };
+
+    order.assignedMachines.push(assignment);
     await order.save();
+
+    await Schedule.updateOne(
+      { _id: availableMachine._id },
+      { $set: { status: "Active" } }
+    );
 
     res.status(200).json({
       message: "Machine assigned successfully",
       assignedMachines: order.assignedMachines,
     });
   } catch (error) {
-    console.error("Assignment error:", error);
+    console.error("Error assigning machine:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Unassign Machine from Order Process (Simple Version)
+// ✅ Unassign machine
 router.post("/unassignMachine/:orderId/:process", async (req, res) => {
+  const { orderId } = req.params;
+  const { machineId, process } = req.body;
+  if (!machineId || !process) {
+    return res
+      .status(400)
+      .json({
+        error: "machineId and process are required in the request body.",
+      });
+  }
+
   try {
-    const { orderId, process } = req.params;
-
-    // Fetch the order
     const order = await Order.findOne({ orderId });
-    if (!order) return res.status(404).json({ error: "Order not found" });
-
-    // Find and remove the machine for the given process
-    const index = order.assignedMachines.findIndex((m) => m.process === process);
-    if (index === -1) {
-      return res.status(404).json({ error: `Process '${process}' not assigned` });
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
     }
 
-    const removedMachine = order.assignedMachines.splice(index, 1);
+    const exists = order.assignedMachines.some(
+      (m) => m.machineId === machineId && m.process === process
+    );
+    if (!exists) {
+      return res
+        .status(400)
+        .json({ error: "Machine assignment not found for this process." });
+    }
 
+    order.assignedMachines = order.assignedMachines.filter(
+      (m) => !(m.machineId === machineId && m.process === process)
+    );
     await order.save();
 
-    res.status(200).json({
-      message: `Machine unassigned from process '${process}' successfully`,
+    const updatedSchedule = await Schedule.findOneAndUpdate(
+      { machineId, process },
+      { status: "Idle" },
+      { new: true }
+    );
+
+    console.log("Unassigned and updated machine schedule:", updatedSchedule);
+
+    return res.status(200).json({
+      message: "Machine unassigned successfully.",
       assignedMachines: order.assignedMachines,
     });
-  } catch (error) {
-    console.error("Unassign error:", error);
-    res.status(500).json({ error: "Internal server error" });
+  } catch (err) {
+    console.error("❌ Error unassigning machine:", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 

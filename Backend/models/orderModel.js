@@ -9,12 +9,12 @@ const orderSchema = new mongoose.Schema({
   rate: String,
   orderDate: Date,
   deliveryDate: Date,
-  status: { type: String, enum: ['Pending', 'Scheduled','Ready to Deliver', 'Deliverd'], default: 'Pending' },
+  status: String,
   isNonChangeable: { type: Boolean, default: false }, // For scheduling lock
   assignedMachines: [
     {
       machineId: String,
-      process: String, 
+      process: String,
       start_time: Date,
       end_time: Date,
     },
@@ -23,4 +23,3 @@ const orderSchema = new mongoose.Schema({
 
 const Order = mongoose.model("Orderdata", orderSchema);
 module.exports = Order;
-
