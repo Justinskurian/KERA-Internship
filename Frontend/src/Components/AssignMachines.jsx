@@ -27,7 +27,7 @@ const AssignMachines = () => {
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch("http://localhost:3000/order");
+      const res = await fetch("https://kera-internship.onrender.com/order");
       const data = await res.json();
       setOrders(data);
     } catch (err) {
@@ -37,7 +37,7 @@ const AssignMachines = () => {
 
   const fetchMachines = async () => {
     try {
-      const res = await fetch("http://localhost:3000/schedule");
+      const res = await fetch("https://kera-internship.onrender.com/schedule");
       const data = await res.json();
       setMachineData(data);
     } catch (err) {
@@ -47,7 +47,7 @@ const AssignMachines = () => {
 
   const fetchFullMachineDetails = async () => {
     try {
-      const res = await fetch("http://localhost:3000/machine");
+      const res = await fetch("https://kera-internship.onrender.com/machine");
       const data = await res.json();
       setFullMachineDetails(data);
     } catch (err) {
@@ -61,7 +61,7 @@ const AssignMachines = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:3000/assign/assignMachines/${orderId}/${process}`,
+        `https://kera-internship.onrender.com/assign/assignMachines/${orderId}/${process}`,
         { method: "POST" }
       );
       const data = await response.json();
@@ -78,7 +78,7 @@ const AssignMachines = () => {
   const handleUnassignMachine = async (orderId, machineId, process) => {
     try {
       const response = await fetch(
-        `http://localhost:3000/assign/unassignMachine/${orderId}/${process}`,
+        `https://kera-internship.onrender.com/assign/unassignMachine/${orderId}/${process}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
