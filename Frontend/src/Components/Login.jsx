@@ -79,14 +79,14 @@ const Login = () => {
           </button>
 
           {/* Demo Credentials */}
-          {showCredentials && (
+          {/* {showCredentials && (
             <div className="mt-4 bg-gray-100 p-4 rounded-lg text-sm text-gray-700 space-y-2">
               <p>
                 <strong>Login Email</strong> kera123@gmail.com <br></br>
                 <strong>Password</strong> kera@123
               </p>
             </div>
-          )}
+          )} */}
         </div>
       </div>
     </div>
