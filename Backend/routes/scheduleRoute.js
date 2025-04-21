@@ -14,13 +14,15 @@ router.get("/", async (req, res) => {
 
 router.post("/add", async (req, res) => {
   try {
-    var item = req.body;
-    var data = await scheduleModel(item).save();
-    res.status(200).send({ message: "Data added" });
+    const item = req.body;
+    const data = new scheduleModel(item);
+    await data.save();
+    res.status(201).json({ message: "Data added", data });
   } catch (error) {
-    res.send("Couldn't add data");
+    res.status(400).json({ message: "Couldn't add data", error: error.message });
   }
 });
+
 
 router.put("/edit/:id", async (req, res) => {
   try {
