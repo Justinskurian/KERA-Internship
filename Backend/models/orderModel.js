@@ -18,8 +18,6 @@ const orderSchema = new mongoose.Schema({
     {
       machineId: String,
       process: String,
-      start_time: Date,
-      end_time: Date,
     },
   ],
 });

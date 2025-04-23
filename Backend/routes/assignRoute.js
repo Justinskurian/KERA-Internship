@@ -6,120 +6,135 @@ const Schedule = require("../models/scheduleModel");
 
 const router = express.Router();
 
-// Assign Machine to Order Process (Simple Version)
-router.post("/assignMachines/:orderId/:process", async (req, res) => {
-  try {
-    const { orderId, process } = req.params;
+function parseTimeString(timeStr) {
+  const [hours, minutes] = timeStr.split(":".map(Number));
+  return { hours, minutes };
+}
 
-    const order = await Order.findOne({ orderId });
-    if (!order) {
-      return res.status(404).json({ error: "Order not found" });
-    }
+function addMinutes(date, minutes) {
+  return new Date(date.getTime() + minutes * 60000);
+}
 
-    const alreadyAssigned = order.assignedMachines.some(
-      (m) => m.process === process
-    );
-    if (alreadyAssigned) {
-      return res
-        .status(400)
-        .json({ error: `Process '${process}' is already assigned` });
-    }
+function getNextWorkDate(currentDate, workingDays) {
+  const date = new Date(currentDate);
+  do {
+    date.setDate(date.getDate() + 1);
+  } while (workingDays !== 7 && (date.getDay() === 0)); // Skip Sundays if 6-day week
+  return date;
+}
 
-    const availableMachine = await Schedule.findOne({
-      process,
-      status: "Idle",
-    });
-    if (!availableMachine) {
-      return res
-        .status(400)
-        .json({ error: `No available machine for process '${process}'` });
-    }
+function getShiftDuration(schedule) {
+  return (schedule.shiftHoursPerDay || 8) * 60;
+}
 
-    // 🧮 Calculate batch split
-    const totalQty = order.quantity;
-    const batchSize = availableMachine.batch_size;
-    const batchCount = Math.ceil(totalQty / batchSize);
+async function findAvailableMachine(process, startDate, allowOvertime = false) {
+  const machines = await Schedule.find({ process }).sort({ machineId: 1 });
+  machines.sort((a, b) => {
+    const aLastEnd = getMachineNextAvailableTime(a);
+    const bLastEnd = getMachineNextAvailableTime(b);
+    return aLastEnd - bLastEnd;
+  });
+  if (machines.length === 0) return null;
 
-    const batches = [];
-    for (let i = 0; i < batchCount; i++) {
-      const qty = i === batchCount - 1 ? totalQty - i * batchSize : batchSize;
-      batches.push({ batchNumber: i + 1, quantity: qty });
-    }
+  if (!allowOvertime) return machines;
 
-    const assignment = {
-      machineId: availableMachine.machineId,
-      process: availableMachine.process,
-      start_time: availableMachine.start_time,
-      end_time: availableMachine.end_time,
-      batches, // 💡 add batch info
-    };
+  // Adjust shift hours to 14 if allowed
+  machines.forEach(m => m.shiftHoursPerDay = 14);
+  return machines;
+}
 
-    order.assignedMachines.push(assignment);
-    await order.save();
+function getMachineNextAvailableTime(machine) {
+  if (!machine.assignedOrders.length) return new Date();
+  const lastOrder = machine.assignedOrders[machine.assignedOrders.length - 1];
+  const lastBatch = lastOrder.batches[lastOrder.batches.length - 1];
+  return new Date(lastBatch.end_time);
+}
 
-    await Schedule.updateOne(
-      { _id: availableMachine._id },
-      { $set: { status: "Active" } }
-    );
+async function assignProcess(machine, order, process, startDate) {
+  const batchSize = machine.batch_size;
+  const totalQuantity = order.quantity;
+  const unitMaterial = machine.unit_material_per_product;
+  const timePerProduct = machine.time_per_product;
+  const totalBatches = Math.ceil(totalQuantity / batchSize);
 
-    res.status(200).json({
-      message: "Machine assigned successfully",
-      assignedMachines: order.assignedMachines,
-    });
-  } catch (error) {
-    console.error("Error assigning machine:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+  let currentTime = new Date(startDate);
+  let batches = [];
 
-// ✅ Unassign machine
-router.post("/unassignMachine/:orderId/:process", async (req, res) => {
-  const { orderId } = req.params;
-  const { machineId, process } = req.body;
-  if (!machineId || !process) {
-    return res
-      .status(400)
-      .json({
-        error: "machineId and process are required in the request body.",
+  for (let i = 0; i < totalBatches; i++) {
+    const batchQuantity = i === totalBatches - 1 ? totalQuantity - batchSize * i : batchSize;
+    const requiredTime = batchQuantity * unitMaterial * timePerProduct * 60; // convert hours to mins
+
+    let timeRemaining = requiredTime;
+    let batchStart = new Date(currentTime);
+    let shiftMins = getShiftDuration(machine);
+
+    while (timeRemaining > 0) {
+      const shiftStart = new Date(currentTime);
+      const shiftEnd = addMinutes(shiftStart, shiftMins);
+      const batchEnd = addMinutes(batchStart, Math.min(timeRemaining, shiftMins));
+
+      timeRemaining -= shiftMins;
+      currentTime = getNextWorkDate(currentTime, machine.workingDays);
+
+      batches.push({
+        batchNumber: i + 1,
+        quantity: batchQuantity,
+        start_time: batchStart,
+        end_time: batchEnd,
       });
+    }
   }
 
+  const assignedOrder = {
+    orderId: order.orderId,
+    status: "Scheduled",
+    batches,
+  };
+  await Schedule.updateOne(
+    { machineId: machine.machineId },
+    { $push: { assignedOrders: assignedOrder }, $set: { status: "Active" } }
+  );
+
+  await Order.updateOne(
+    { orderId: order.orderId },
+    { $push: { assignedMachines: { machineId: machine.machineId, process } } }
+  );
+
+  return batches[batches.length - 1].end_time; // Return end of last batch for next process
+}
+
+router.post("/autoschedule", async (req, res) => {
   try {
-    const order = await Order.findOne({ orderId });
-    if (!order) {
-      return res.status(404).json({ error: "Order not found" });
+    const orders = await Order.find({ status: "Scheduled" }).sort({ priority: 1, orderDate: 1 });
+    const processes = ["COMPOUND MIXING", "TUFTING", "CUTTING", "PRINTING", "LABELLING & PACKING"];
+
+    for (const order of orders) {
+      let currentStartTime = new Date();
+
+      for (const process of processes) {
+        let machines = await findAvailableMachine(process, currentStartTime);
+
+        if (!machines.length) {
+          machines = await findAvailableMachine(process, currentStartTime, true); // allow overtime
+        }
+
+        const machine = machines[0]; // pick earliest available
+        const lastBatchEnd = await assignProcess(machine, order, process, currentStartTime);
+        currentStartTime = new Date(lastBatchEnd);
+      }
+
+      await Order.updateOne(
+        { orderId: order.orderId },
+        { status: "Ready to Deliver", deliveryDate: currentStartTime }
+      );
     }
 
-    const exists = order.assignedMachines.some(
-      (m) => m.machineId === machineId && m.process === process
-    );
-    if (!exists) {
-      return res
-        .status(400)
-        .json({ error: "Machine assignment not found for this process." });
-    }
-
-    order.assignedMachines = order.assignedMachines.filter(
-      (m) => !(m.machineId === machineId && m.process === process)
-    );
-    await order.save();
-
-    const updatedSchedule = await Schedule.findOneAndUpdate(
-      { machineId, process },
-      { status: "Idle" },
-      { new: true }
-    );
-
-    console.log("Unassigned and updated machine schedule:", updatedSchedule);
-
-    return res.status(200).json({
-      message: "Machine unassigned successfully.",
-      assignedMachines: order.assignedMachines,
-    });
+    res.status(200).send("Auto scheduling complete");
   } catch (err) {
-    console.error("❌ Error unassigning machine:", err);
-    return res.status(500).json({ error: "Internal server error" });
+    console.error(err);
+    res.status(500).send("Error scheduling orders");
   }
 });
 
 module.exports = router;
+
