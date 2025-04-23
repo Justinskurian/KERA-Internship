@@ -1,13 +1,11 @@
 const express = require("express");
-const mongoose = require("mongoose");
-const Order = require("../models/orderModel");
-const Machine = require("../models/machineModel");
-const Schedule = require("../models/scheduleModel");
-
 const router = express.Router();
 
+const Order = require("../models/orderModel");
+const Schedule = require("../models/scheduleModel");
+
 function parseTimeString(timeStr) {
-  const [hours, minutes] = timeStr.split(":".map(Number));
+  const [hours, minutes] = timeStr.split(":").map(Number);
   return { hours, minutes };
 }
 
@@ -50,7 +48,7 @@ function getMachineNextAvailableTime(machine) {
   return new Date(lastBatch.end_time);
 }
 
-async function assignProcess(machine, order, process, startDate) {
+async function assignProcess(machine, order, process, startDate, batchStartOverrides = {}) {
   const batchSize = machine.batch_size;
   const totalQuantity = order.quantity;
   const unitMaterial = machine.unit_material_per_product;
@@ -62,19 +60,15 @@ async function assignProcess(machine, order, process, startDate) {
 
   for (let i = 0; i < totalBatches; i++) {
     const batchQuantity = i === totalBatches - 1 ? totalQuantity - batchSize * i : batchSize;
-    const requiredTime = batchQuantity * unitMaterial * timePerProduct * 60; // convert hours to mins
+    const requiredTime = batchQuantity * unitMaterial * timePerProduct * 60;
 
     let timeRemaining = requiredTime;
-    let batchStart = new Date(currentTime);
+    let batchStart = batchStartOverrides[i] || new Date(currentTime);
     let shiftMins = getShiftDuration(machine);
 
     while (timeRemaining > 0) {
-      const shiftStart = new Date(currentTime);
-      const shiftEnd = addMinutes(shiftStart, shiftMins);
       const batchEnd = addMinutes(batchStart, Math.min(timeRemaining, shiftMins));
-
       timeRemaining -= shiftMins;
-      currentTime = getNextWorkDate(currentTime, machine.workingDays);
 
       batches.push({
         batchNumber: i + 1,
@@ -82,7 +76,11 @@ async function assignProcess(machine, order, process, startDate) {
         start_time: batchStart,
         end_time: batchEnd,
       });
+
+      batchStart = getNextWorkDate(batchStart, machine.workingDays);
     }
+
+    currentTime = new Date(batches[batches.length - 1].end_time);
   }
 
   const assignedOrder = {
@@ -100,16 +98,17 @@ async function assignProcess(machine, order, process, startDate) {
     { $push: { assignedMachines: { machineId: machine.machineId, process } } }
   );
 
-  return batches[batches.length - 1].end_time; // Return end of last batch for next process
+  return batches;
 }
 
 router.post("/autoschedule", async (req, res) => {
   try {
-    const orders = await Order.find({ status: "Scheduled" }).sort({ priority: 1, orderDate: 1 });
+    const orders = await Order.find({ status: "Pending" }).sort({ priority: 1, orderDate: 1 });
     const processes = ["COMPOUND MIXING", "TUFTING", "CUTTING", "PRINTING", "LABELLING & PACKING"];
 
     for (const order of orders) {
       let currentStartTime = new Date();
+      let previousProcessFirstBatchEnds = null;
 
       for (const process of processes) {
         let machines = await findAvailableMachine(process, currentStartTime);
@@ -118,9 +117,16 @@ router.post("/autoschedule", async (req, res) => {
           machines = await findAvailableMachine(process, currentStartTime, true); // allow overtime
         }
 
-        const machine = machines[0]; // pick earliest available
-        const lastBatchEnd = await assignProcess(machine, order, process, currentStartTime);
-        currentStartTime = new Date(lastBatchEnd);
+        const machine = machines[0];
+
+        const batchStartOverrides = {};
+        if (previousProcessFirstBatchEnds) {
+          batchStartOverrides[0] = previousProcessFirstBatchEnds;
+        }
+
+        const batches = await assignProcess(machine, order, process, currentStartTime, batchStartOverrides);
+        previousProcessFirstBatchEnds = batches[0].end_time;
+        currentStartTime = new Date(Math.max(...batches.map(b => new Date(b.end_time).getTime())));
       }
 
       await Order.updateOne(
@@ -136,5 +142,17 @@ router.post("/autoschedule", async (req, res) => {
   }
 });
 
-module.exports = router;
+//Resets the schedule
+router.post("/resetschedule", async (req, res) => {
+  try {
+    await Schedule.updateMany({}, { $set: { assignedOrders: [], status: "Idle" } });
+    await Order.updateMany({}, { $set: { assignedMachines: [], status: "Pending", deliveryDate: null } });
 
+    res.status(200).send("Schedule reset successful.");
+  } catch (error) {
+    console.error("Reset error:", error);
+    res.status(500).send("Error resetting schedule.");
+  }
+});
+
+module.exports = router;
