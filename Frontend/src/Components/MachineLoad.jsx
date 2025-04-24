@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-const OrderCalendar = () => {
+const MachineLoad = () => {
   const [groupedMachines, setGroupedMachines] = useState({});
 
   useEffect(() => {
     const fetchMachines = async () => {
       try {
-        const res = await axios.get("http://localhost:3000/schedule");
+        const res = await axios.get("https://kera-internship.onrender.com/schedule");
         const machines = res.data;
 
         // Group by process
@@ -87,4 +87,4 @@ const OrderCalendar = () => {
   );
 };
 
-export default OrderCalendar;
+export default MachineLoad;

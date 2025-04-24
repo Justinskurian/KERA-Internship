@@ -53,7 +53,7 @@ const Home = ({ child }) => {
             </li>
             <li className="my-2">
               <a
-                href="/calender"
+                href="/machineload"
                 className="flex items-center px-6 py-3 text-lg text-gray-600 hover:text-black hover:bg-gray-100 rounded-lg transition"
               >
                 Machine Load

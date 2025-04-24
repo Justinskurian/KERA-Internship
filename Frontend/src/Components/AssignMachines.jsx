@@ -10,7 +10,7 @@ const AssignMachines = () => {
     setLoading(true);
     setMessage("");
     try {
-      const res = await axios.post("http://localhost:3000/assign/autoschedule");
+      const res = await axios.post("https://kera-internship.onrender.com/assign/autoschedule");
       setMessage(res.data.message || "Scheduling complete!");
     } catch (err) {
       console.error(err);
@@ -23,7 +23,7 @@ const AssignMachines = () => {
     setLoading(true);
     setMessage("");
     try {
-      const res = await axios.post("http://localhost:3000/assign/increaseShift");
+      const res = await axios.post("https://kera-internship.onrender.com/assign/increaseShift");
       setShiftExtended(true);
       setMessage("Production hours successfully extended by 6 hours.");
     } catch (err) {
