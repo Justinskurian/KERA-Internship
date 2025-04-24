@@ -13,7 +13,8 @@ const orderSchema = new mongoose.Schema({
     type: String,
     enum: ["Pending", "Scheduled", "Ready to Deliver", "Delivered"],
     default: "Pending",
-  },  isNonChangeable: { type: Boolean, default: false }, // For scheduling lock
+  },
+  isNonChangeable: { type: Boolean, default: false }, // For scheduling lock
   assignedMachines: [
     {
       machineId: String,

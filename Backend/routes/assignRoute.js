@@ -88,6 +88,7 @@ async function assignProcess(machine, order, process, startDate, batchStartOverr
     status: "Scheduled",
     batches,
   };
+
   await Schedule.updateOne(
     { machineId: machine.machineId },
     { $push: { assignedOrders: assignedOrder }, $set: { status: "Active" } }
@@ -106,9 +107,10 @@ router.post("/autoschedule", async (req, res) => {
     const orders = await Order.find({ status: "Pending" }).sort({ priority: 1, orderDate: 1 });
     const processes = ["COMPOUND MIXING", "TUFTING", "CUTTING", "PRINTING", "LABELLING & PACKING"];
 
+    let previousProcessFirstBatchEnds = null; // Track the end of previous order's last batch
+
     for (const order of orders) {
       let currentStartTime = new Date();
-      let previousProcessFirstBatchEnds = null;
 
       for (const process of processes) {
         let machines = await findAvailableMachine(process, currentStartTime);
@@ -119,14 +121,19 @@ router.post("/autoschedule", async (req, res) => {
 
         const machine = machines[0];
 
+        // Pass the end time of the previous order's last batch to the current order's batch start
         const batchStartOverrides = {};
         if (previousProcessFirstBatchEnds) {
-          batchStartOverrides[0] = previousProcessFirstBatchEnds;
+          batchStartOverrides[0] = previousProcessFirstBatchEnds; // Make sure next process starts after the previous order
         }
 
         const batches = await assignProcess(machine, order, process, currentStartTime, batchStartOverrides);
+
+        // Update the end time of the first batch from the current order, which will be the start time of the next process
         previousProcessFirstBatchEnds = batches[0].end_time;
-        currentStartTime = new Date(Math.max(...batches.map(b => new Date(b.end_time).getTime())));
+
+        // Update the current start time for the next process to reflect the end of the last batch of the current process
+        currentStartTime = new Date(Math.max(...batches.map(b => new Date(b.end_time).getTime()))); 
       }
 
       await Order.updateOne(
@@ -142,17 +149,42 @@ router.post("/autoschedule", async (req, res) => {
   }
 });
 
-//Resets the schedule
+
+router.post("/increaseShift", async (req, res) => {
+  try {
+    await Schedule.updateMany({}, { $inc: { shiftHoursPerDay: 6 } });
+    res.status(200).send("Shift hours successfully increased by 6 hours.");
+  } catch (err) {
+    console.error("Error increasing shift hours:", err);
+    res.status(500).send("Failed to increase shift hours.");
+  }
+});
+
+// Resets the schedule
 router.post("/resetschedule", async (req, res) => {
   try {
-    await Schedule.updateMany({}, { $set: { assignedOrders: [], status: "Idle" } });
-    await Order.updateMany({}, { $set: { assignedMachines: [], status: "Pending", deliveryDate: null } });
+    await Schedule.updateMany({}, {
+      $set: {
+        assignedOrders: [],
+        status: "Idle",
+        shiftHoursPerDay: 8 // Resetting shift hours to default
+      }
+    });
 
-    res.status(200).send("Schedule reset successful.");
+    await Order.updateMany({}, {
+      $set: {
+        assignedMachines: [],
+        status: "Pending",
+        deliveryDate: null
+      }
+    });
+
+    res.status(200).send("Schedule and shift hours reset successful.");
   } catch (error) {
     console.error("Reset error:", error);
     res.status(500).send("Error resetting schedule.");
   }
 });
+
 
 module.exports = router;

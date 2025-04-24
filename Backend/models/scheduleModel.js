@@ -13,7 +13,7 @@ const scheduleSchema = mongoose.Schema({
   startTime: { type: String, required: true }, // e.g., "08:00"
   endTime: { type: String, required: true },   // e.g., "16:00"
   shiftHoursPerDay: { type: Number, default: 8 },
-  workingDays: { type: Number, default: 6 },
+  workingDays: { type: Number, default: 6 }, // Number of days the machine works
 
   // Orders assigned to this machine
   assignedOrders: [
