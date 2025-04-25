@@ -41,18 +41,20 @@ const ProductionOrder = () => {
     customer: "",
     quantity: "",
     priority: "",
+    item: "KERA#050623-11",
     isNonChangeable: false,
-    deliveryDate: "", // Added deliveryDate field
+    deliveryDate: "",
   });
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setOrderData((prev) => ({
-      ...prev,
+  
+    setOrderData((prevData) => ({
+      ...prevData,
       [name]: type === "checkbox" ? checked : value,
     }));
   };
-
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -67,7 +69,7 @@ const ProductionOrder = () => {
         quantity: "",
         priority: "",
         isNonChangeable: false,
-        deliveryDate: "", // Reset deliveryDate field after submit
+        deliveryDate: "",
       });
     } catch (error) {
       console.error("Error creating order:", error);
@@ -121,13 +123,6 @@ const ProductionOrder = () => {
                     </p>
                   </div>
 
-                  <div>
-                    <p className="text-gray-500">Non-Changeable</p>
-                    <p className="text-lg font-semibold text-gray-800">
-                      {poData.isNonChangeable ? "Yes" : "No"}
-                    </p>
-                  </div>
-
                   <div className="col-span-2 flex justify-center mt-4">
                     <button
                       onClick={() => handleSeeDetails(poData._id)}
@@ -176,6 +171,21 @@ const ProductionOrder = () => {
                 className="w-full border border-gray-300 rounded-lg px-4 py-2"
               />
             </div>
+
+            <div>
+              <label className="block text-gray-600 font-medium mb-1">
+                Item
+              </label>
+              <input
+                type="text"
+                name="item"
+                value={orderData.item}
+                onChange={handleChange}
+                required
+                className="w-full border border-gray-300 rounded-lg px-4 py-2"
+              />
+            </div>
+
 
             <div>
               <label className="block text-gray-600 font-medium mb-1">

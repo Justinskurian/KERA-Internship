@@ -14,11 +14,19 @@ router.get("/", async (req, res) => {
 
 router.post("/add", async (req, res) => {
   try {
-    var item = req.body;
-    var data = await orderModel(item).save();
-    res.status(200).send({ message: "Data added" });
+    const item = {
+      ...req.body,
+      orderDate: new Date(), // Set the order creation date to now
+      deliveryDate: req.body.deliveryDate
+        ? new Date(req.body.deliveryDate)
+        : null, // Convert to Date object
+    };
+
+    const data = await new orderModel(item).save();
+    res.status(200).send({ message: "Data added", data });
   } catch (error) {
-    res.send("Couldn't add data");
+    console.error("Add order error:", error);
+    res.status(500).send("Couldn't add data");
   }
 });
 
@@ -31,13 +39,13 @@ router.put("/edit/:id", async (req, res) => {
   }
 });
 
-  router.delete("/delete/:id", async (req,res)=>{
-    try {
-        await orderModel.findByIdAndDelete(req.params.id)
-        res.status(200).send("Deleted successfully")
-    } catch (error) {
-        res.send("couldn't delete")
-    }
-  })
+router.delete("/delete/:id", async (req, res) => {
+  try {
+    await orderModel.findByIdAndDelete(req.params.id);
+    res.status(200).send("Deleted successfully");
+  } catch (error) {
+    res.send("couldn't delete");
+  }
+});
 
 module.exports = router;
