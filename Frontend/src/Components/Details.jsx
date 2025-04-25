@@ -90,29 +90,6 @@ const Details = () => {
         </select>
       </div>
 
-      {/* Calendar Section */}
-      <div className="w-full max-w-5xl bg-white shadow-lg rounded-2xl p-8 mb-8">
-        <h2 className="text-2xl font-bold text-gray-700 text-center mb-6">
-          Estimated Delivery:{" "}
-          <span className="font-bold text-orange-600">
-            {deliveryDate ? deliveryDate.toDateString() : "N/A"}
-          </span>
-        </h2>
-
-        <div className="flex justify-center">
-          <div className="p-6 bg-white bg-opacity-80 backdrop-blur-lg shadow-lg rounded-xl">
-            <Calendar
-              className="rounded-lg shadow-md p-4 text-gray-800 w-full transition-all transform hover:scale-101"
-              tileClassName={({ date }) =>
-                machineWorkingDates.includes(date.toDateString())
-                  ? "bg-orange-200 font-semibold rounded-lg"
-                  : "hover:bg-gray-200 rounded-lg transition-all"
-              }
-            />
-          </div>
-        </div>
-      </div>
-
       {/* Process Details Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-5xl">
         {filteredBOM.length > 0 ? (

@@ -58,16 +58,18 @@ const ProductionOrder = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(
-        "https://kera-internship.onrender.com/order/add",
-        orderData
-      );
+      await axios.post("https://kera-internship.onrender.com/order/add", {
+        ...orderData,
+        orderDate: new Date(), // inject current timestamp
+      });
+  
       alert("Order created successfully!");
       setOrderData({
         orderId: "",
         customer: "",
         quantity: "",
         priority: "",
+        item: "KERA#050623-11",
         isNonChangeable: false,
         deliveryDate: "",
       });
