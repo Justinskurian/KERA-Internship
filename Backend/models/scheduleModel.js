@@ -38,7 +38,7 @@ const scheduleSchema = mongoose.Schema({
   // Machine status
   status: {
     type: String,
-    enum: ["Active", "Idle"],
+    enum: ["Active", "Idle","Running"],
     default: "Idle",
   },
 });
