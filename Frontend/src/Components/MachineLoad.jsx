@@ -2,119 +2,133 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 
 const MachineLoad = () => {
-  const [groupedMachines, setGroupedMachines] = useState({});
-  const [scheduleMap, setScheduleMap] = useState({});
+  const [schedules, setSchedules] = useState([]);
+  const [machineMeta, setMachineMeta] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch main machine data
-        const machinesRes = await axios.get("https://kera-internship.onrender.com/schedule");
-        const machines = machinesRes.data;
-
-        // Group machines by process
-        const grouped = machines.reduce((acc, machine) => {
-          if (!acc[machine.process]) acc[machine.process] = [];
-          acc[machine.process].push(machine);
-          return acc;
-        }, {});
-        setGroupedMachines(grouped);
-
-        // Fetch schedule data
-        const scheduleRes = await axios.get("https://production-scheduler-backend-7qgb.onrender.com/scheduling/schedule");
-        const schedules = scheduleRes.data;
-
-        // Group schedule by machineName
-        const scheduleMap = schedules.reduce((acc, item) => {
-          if (!acc[item.machineName]) acc[item.machineName] = [];
-          acc[item.machineName].push(item);
-          return acc;
-        }, {});
-        setScheduleMap(scheduleMap);
-
+        const [scheduleRes, metaRes] = await Promise.all([
+          axios.get(
+            "https://production-scheduler-backend-7qgb.onrender.com/scheduling/schedule"
+          ),
+          axios.get("https://kera-internship.onrender.com/schedule"),
+        ]);
+        setSchedules(scheduleRes.data);
+        setMachineMeta(metaRes.data);
       } catch (err) {
-        console.error("Error fetching machine or schedule data", err);
+        console.error("Error fetching data:", err);
       }
     };
 
     fetchData();
   }, []);
 
-  // Calculate the total worked hours between scheduledStart and scheduledEnd
-  const calculateWorkedHours = (schedules) => {
-    return schedules.reduce((acc, s) => {
+  const groupedByStage = schedules.reduce((acc, item) => {
+    const stage = item.stageName || "Unknown";
+    if (!acc[stage]) acc[stage] = {};
+    if (!acc[stage][item.machineID]) acc[stage][item.machineID] = [];
+    acc[stage][item.machineID].push(item);
+    return acc;
+  }, {});
+
+  const calculateWorkedHours = (machineSchedules) => {
+    return machineSchedules.reduce((total, s) => {
       const start = new Date(s.scheduledStart);
       const end = new Date(s.scheduledEnd);
-      const durationInHours = (end - start) / (1000 * 60 * 60); // in hours
-      return acc + durationInHours;
+      return total + (end - start) / (1000 * 60 * 60); // in hours
     }, 0);
   };
 
+  const getMachineInfo = (machineID) => {
+    return machineMeta.find((m) => m._id === machineID);
+  };
+
   return (
-    <div className="p-6 bg-gray-50 min-h-screen rounded-2xl">
-      <h1 className="text-2xl font-bold mb-6">Machine Load Overview</h1>
+    <div className="p-6 bg-gray-100 min-h-screen">
+      <h1 className="text-3xl font-semibold mb-8 text-center text-gray-800">
+        Machine Load Overview
+      </h1>
 
-      {Object.entries(groupedMachines).map(([process, machines]) => (
-        <div key={process} className="mb-10">
-          <h2 className="text-xl font-semibold text-orange-600 mb-4 border-b border-gray-300 pb-1">
-            {process}
+      {Object.entries(groupedByStage).map(([stageName, machines]) => (
+        <div key={stageName} className="mb-12">
+          <h2 className="text-2xl font-semibold text-orange-600 mb-6">
+            {stageName}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {machines.map((machine) => {
-              const schedules = scheduleMap[machine.machineId] || [];
 
-              // Calculate total working hours for this machine
-              const totalWorkingHours = machine.shiftHoursPerDay * machine.workingDays;
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {Object.entries(machines).map(([machineID, machineSchedules]) => {
+              const workedHours = calculateWorkedHours(machineSchedules);
+              const machineInfo = getMachineInfo(machineID);
+              const totalWorkingHours =
+                (machineInfo?.shiftHoursPerDay || 0) *
+                (machineInfo?.workingDays || 0);
+              const availableHours = (totalWorkingHours - workedHours).toFixed(
+                2
+              );
+              const latestStatus =
+                machineSchedules[machineSchedules.length - 1]?.status || "Idle";
 
-              // Calculate total worked hours from the schedules
-              const workedHours = calculateWorkedHours(schedules);
+              // Determine the color for remaining hours (green if positive, red if negative)
+              const remainingHoursColor =
+                availableHours >= 0 ? "text-green-600" : "text-red-600";
 
               return (
                 <div
-                  key={machine.machineId}
-                  className="bg-white rounded-2xl shadow-md p-4 border border-gray-200"
+                  key={machineID}
+                  className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 flex flex-col justify-between space-y-4"
                 >
-                  <div className="mb-4">
-                    <h3 className="text-lg font-semibold text-gray-700">
-                      {machine.machineId}
+                  <div className="text-center">
+                    <h3 className="text-xl font-semibold text-gray-800">
+                      Machine: {machineInfo?.machineId || machineID}
                     </h3>
-                    <p className="text-sm text-gray-500">
-                      Status: {machine.status || "Idle"}
+
+                    <p className="text-sm text-gray-500 mb-4">
+                      Status:{" "}
+                      <span
+                        className={`font-medium ${
+                          latestStatus === "Scheduled"
+                            ? "text-green-600"
+                            : "text-gray-600"
+                        }`}
+                      >
+                        {latestStatus}
+                      </span>
                     </p>
-
-                    {schedules.length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        {schedules.map((s, idx) => {
-                          const start = new Date(s.scheduledStart);
-                          const end = new Date(s.scheduledEnd);
-                          const durationInHours = ((end - start) / (1000 * 60 * 60)).toFixed(2); // rounded to 2 decimal places
-
-                          return (
-                            <div key={idx} className="text-xs text-gray-500">
-                              <p className="font-semibold text-orange-600">Order ID: {s.orderNumber}</p>
-                              <p>
-                                {start.toLocaleString()} → {end.toLocaleString()}
-                              </p>
-                              <p className="text-blue-600">
-                                Duration: {durationInHours} hours
-                              </p>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
                   </div>
 
-                  {/* Display total working hours and worked hours */}
-                  <div className="mt-4">
-                    <p className="text-sm text-gray-600">
-                      Total Working Hours: {totalWorkingHours} hours
+                  <div className="space-y-2">
+                    {machineSchedules.map((s, idx) => {
+                      const start = new Date(s.scheduledStart);
+                      const end = new Date(s.scheduledEnd);
+                      const duration = (
+                        (end - start) /
+                        (1000 * 60 * 60)
+                      ).toFixed(2);
+
+                      return (
+                        <div key={idx} className="text-sm text-gray-700">
+                          <p className="font-medium text-orange-600">
+                            Order: {s.orderNumber}
+                          </p>
+                          <p>
+                            {start.toLocaleString()} → {end.toLocaleString()}
+                          </p>
+                          <p>Duration: {duration} hrs</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-4 text-center text-sm text-gray-700">
+                    Total Available Hours:
+                    <p className="font-medium ">
+                      {" "}
+                      {totalWorkingHours.toFixed(2)} hrs
                     </p>
-                    <p className="text-sm text-gray-600">
-                      Total Worked Hours: {workedHours.toFixed(2)} hours
-                    </p>
-                    <p className="text-sm text-red-600">
-                      Remaining Hours: {(totalWorkingHours - workedHours).toFixed(2)} hours
+                    Total Worked Hours: <p className="font-medium ">{workedHours.toFixed(2)} hrs</p>
+                    
+                      Remaining Hours: <p className={`${remainingHoursColor} font-semibold`}>{availableHours} hrs
                     </p>
                   </div>
                 </div>

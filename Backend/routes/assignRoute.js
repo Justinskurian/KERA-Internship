@@ -175,7 +175,6 @@ router.post("/resetschedule", async (req, res) => {
       $set: {
         assignedMachines: [],
         status: "Pending",
-        deliveryDate: null
       }
     });
 
