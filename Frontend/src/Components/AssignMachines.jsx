@@ -10,7 +10,7 @@ const AssignMachines = () => {
     setLoading(true);
     setMessage("");
     try {
-      const res = await axios.post("https://kera-internship.onrender.com/assign/autoschedule");
+      const res = await axios.post("https://production-scheduler-backend-7qgb.onrender.com/scheduling/auto-schedule");
       setMessage(res.data.message || "Scheduling complete!");
     } catch (err) {
       console.error(err);
