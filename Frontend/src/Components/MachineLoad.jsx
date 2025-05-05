@@ -135,14 +135,15 @@ const MachineLoad = () => {
                     Total Worked Hours:
                     <p className="font-medium ">{workedHours.toFixed(2)} hrs</p>
                     Remaining Hours:
-                    <p className={`${remainingHoursColor} font-semibold`}>{availableHours} hrs</p>
+                    <p className={`${remainingHoursColor} font-semibold`}>{availableHours} hrs</p><br/>
+                    <p className="font-semibold"> Increase The shift Hours per day</p>
 
                     <div className="mt-4 flex justify-center space-x-2">
                       <button
                         onClick={() =>
                           handleShiftIncrease(machineInfo?.machineId || machineID, 4)
                         }
-                        className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
+                        className="bg-orange-400 text-white px-3 py-1 rounded hover:bg-orange-500 text-sm"
                       >
                         +4 hrs
                       </button>
@@ -150,7 +151,7 @@ const MachineLoad = () => {
                         onClick={() =>
                           handleShiftIncrease(machineInfo?.machineId || machineID, 6)
                         }
-                        className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-sm"
+                        className="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 text-sm"
                       >
                         +6 hrs
                       </button>
@@ -158,7 +159,7 @@ const MachineLoad = () => {
                         onClick={() =>
                           handleShiftIncrease(machineInfo?.machineId || machineID, 8)
                         }
-                        className="bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600 text-sm"
+                        className="bg-orange-600 text-white px-3 py-1 rounded hover:bg-orange-700 text-sm"
                       >
                         +8 hrs
                       </button>
