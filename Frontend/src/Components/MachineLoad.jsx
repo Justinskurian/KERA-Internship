@@ -40,6 +40,25 @@ const MachineLoad = () => {
     }, 0);
   };
 
+  const handleShiftIncrease = async (machineId, hours) => {
+    try {
+      const response = await axios.post(
+        "https://production-scheduler-backend-7qgb.onrender.com/scheduling/increaseShift",
+        {
+          machineId,
+          increaseByHours: hours,
+        }
+      );
+      alert(
+        `Success: Shift extended by ${hours} hours.\nNew End Time: ${response.data.newEndTime}\nUpdated Shift Hours: ${response.data.newShiftHours}`
+      );
+      window.location.reload(); // Reload to reflect updated shift hours
+    } catch (err) {
+      console.error("Error increasing shift:", err);
+      alert("Failed to increase shift hours.");
+    }
+  };
+  
   const getMachineInfo = (machineID) => {
     return machineMeta.find((m) => m._id === machineID);
   };
@@ -130,6 +149,27 @@ const MachineLoad = () => {
                     
                       Remaining Hours: <p className={`${remainingHoursColor} font-semibold`}>{availableHours} hrs
                     </p>
+                    <div className="mt-4 flex justify-center space-x-2">
+  <button
+    onClick={() => handleShiftIncrease(machineInfo?.machineId || machineID, 4)}
+    className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
+  >
+    +4 hrs
+  </button>
+  <button
+    onClick={() => handleShiftIncrease(machineInfo?.machineId || machineID, 6)}
+    className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-sm"
+  >
+    +6 hrs
+  </button>
+  <button
+    onClick={() => handleShiftIncrease(machineInfo?.machineId || machineID, 8)}
+    className="bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600 text-sm"
+  >
+    +8 hrs
+  </button>
+</div>
+
                   </div>
                 </div>
               );

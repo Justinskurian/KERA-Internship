@@ -150,15 +150,45 @@ router.post("/autoschedule", async (req, res) => {
 });
 
 
+// POST /increaseShift
 router.post("/increaseShift", async (req, res) => {
   try {
-    await Schedule.updateMany({}, { $inc: { shiftHoursPerDay: 6 } });
-    res.status(200).send("Shift hours successfully increased by 6 hours.");
+    const { machineId, increaseByHours } = req.body;
+
+    if (!machineId || ![4, 6, 8].includes(increaseByHours)) {
+      return res.status(400).json({ error: "Invalid input." });
+    }
+
+    const machine = await Schedule.findOne({ machineId });
+    if (!machine) {
+      return res.status(404).json({ error: "Machine not found." });
+    }
+
+    // Parse endTime (e.g., "16:00")
+    const [endHour, endMinute] = machine.endTime.split(":").map(Number);
+    let newEndHour = endHour + increaseByHours;
+
+    if (newEndHour >= 24) newEndHour %= 24; // Wrap around midnight
+
+    const formattedEndHour = String(newEndHour).padStart(2, "0");
+    const formattedEndMinute = String(endMinute).padStart(2, "0");
+
+    machine.endTime = `${formattedEndHour}:${formattedEndMinute}`;
+    
+    // Save to trigger the pre-save middleware for shiftHoursPerDay
+    await machine.save();
+
+    res.status(200).json({
+      message: `Shift extended by ${increaseByHours} hours.`,
+      newEndTime: machine.endTime,
+      newShiftHours: machine.shiftHoursPerDay,
+    });
   } catch (err) {
-    console.error("Error increasing shift hours:", err);
-    res.status(500).send("Failed to increase shift hours.");
+    console.error("Error updating shift hours:", err);
+    res.status(500).send("Failed to update shift hours.");
   }
 });
+
 
 // Resets the schedule
 router.post("/resetschedule", async (req, res) => {

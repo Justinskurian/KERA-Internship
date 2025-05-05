@@ -12,8 +12,8 @@ const scheduleSchema = mongoose.Schema({
   // Daily shift schedule
   startTime: { type: String, required: true }, // e.g., "08:00"
   endTime: { type: String, required: true },   // e.g., "16:00"
-  shiftHoursPerDay: { type: Number, default: 8 },
-  workingDays: { type: Number, default: 6 }, // Number of days the machine works
+  shiftHoursPerDay: { type: Number }, // Will be auto-calculated
+  workingDays: { type: Number, default: 6 },
 
   // Orders assigned to this machine
   assignedOrders: [
@@ -38,9 +38,24 @@ const scheduleSchema = mongoose.Schema({
   // Machine status
   status: {
     type: String,
-    enum: ["Active", "Idle","Running"],
+    enum: ["Active", "Idle", "Running"],
     default: "Idle",
   },
+});
+
+// ✅ Automatically calculate shiftHoursPerDay before saving
+scheduleSchema.pre("save", function (next) {
+  const [startHour, startMinute] = this.startTime.split(":").map(Number);
+  const [endHour, endMinute] = this.endTime.split(":").map(Number);
+
+  const start = startHour + startMinute / 60;
+  const end = endHour + endMinute / 60;
+
+  let diff = end - start;
+  if (diff < 0) diff += 24; // handles overnight shifts
+
+  this.shiftHoursPerDay = diff;
+  next();
 });
 
 const scheduleData = mongoose.model("scheduleData", scheduleSchema);
