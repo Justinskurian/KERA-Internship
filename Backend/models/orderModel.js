@@ -11,7 +11,7 @@ const orderSchema = new mongoose.Schema({
   deliveryDate: Date,
   status: {
     type: String,
-    enum: ["Pending", "Scheduled", "Ready to Deliver", "Delivered"],
+    enum: ["Pending", "Scheduled","In Progress", "Ready to Deliver", "Delivered"],
     default: "Pending",
   },
   isNonChangeable: { type: Boolean, default: false }, // For scheduling lock
