@@ -9,9 +9,7 @@ const MachineLoad = () => {
     const fetchData = async () => {
       try {
         const [scheduleRes, metaRes] = await Promise.all([
-          axios.get(
-            "https://production-scheduler-backend-7qgb.onrender.com/scheduling/schedule"
-          ),
+          axios.get("https://production-scheduler-backend-7qgb.onrender.com/scheduling/schedule"),
           axios.get("https://kera-internship.onrender.com/schedule"),
         ]);
         setSchedules(scheduleRes.data);
@@ -32,18 +30,19 @@ const MachineLoad = () => {
     return acc;
   }, {});
 
-  const calculateWorkedHours = (machineSchedules) => {
+  const calculateWorkedHours = (machineSchedules, machineID) => {
+    const machine = getMachineInfo(machineID);
+    const timePerProduct = machine?.time_per_product || 0;
     return machineSchedules.reduce((total, s) => {
-      const start = new Date(s.scheduledStart);
-      const end = new Date(s.scheduledEnd);
-      return total + (end - start) / (1000 * 60 * 60); // in hours
+      const duration = timePerProduct * s.quantity;
+      return total + duration;
     }, 0);
   };
 
   const handleShiftIncrease = async (machineId, hours) => {
     try {
       const response = await axios.post(
-        "https://production-scheduler-backend-7qgb.onrender.com/scheduling/increaseShift",
+        "https://kera-internship.onrender.com/assign/increaseShift",
         {
           machineId,
           increaseByHours: hours,
@@ -52,13 +51,13 @@ const MachineLoad = () => {
       alert(
         `Success: Shift extended by ${hours} hours.\nNew End Time: ${response.data.newEndTime}\nUpdated Shift Hours: ${response.data.newShiftHours}`
       );
-      window.location.reload(); // Reload to reflect updated shift hours
+      window.location.reload();
     } catch (err) {
       console.error("Error increasing shift:", err);
       alert("Failed to increase shift hours.");
     }
   };
-  
+
   const getMachineInfo = (machineID) => {
     return machineMeta.find((m) => m._id === machineID);
   };
@@ -71,24 +70,17 @@ const MachineLoad = () => {
 
       {Object.entries(groupedByStage).map(([stageName, machines]) => (
         <div key={stageName} className="mb-12">
-          <h2 className="text-2xl font-semibold text-orange-600 mb-6">
-            {stageName}
-          </h2>
+          <h2 className="text-2xl font-semibold text-orange-600 mb-6">{stageName}</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {Object.entries(machines).map(([machineID, machineSchedules]) => {
-              const workedHours = calculateWorkedHours(machineSchedules);
               const machineInfo = getMachineInfo(machineID);
+              const workedHours = calculateWorkedHours(machineSchedules, machineID);
               const totalWorkingHours =
-                (machineInfo?.shiftHoursPerDay || 0) *
-                (machineInfo?.workingDays || 0);
-              const availableHours = (totalWorkingHours - workedHours).toFixed(
-                2
-              );
-              const latestStatus =
-                machineSchedules[machineSchedules.length - 1]?.status || "Idle";
+                (machineInfo?.shiftHoursPerDay || 0) * (machineInfo?.workingDays || 0);
+              const availableHours = (totalWorkingHours - workedHours).toFixed(2);
+              const latestStatus = machineSchedules[machineSchedules.length - 1]?.status || "Idle";
 
-              // Determine the color for remaining hours (green if positive, red if negative)
               const remainingHoursColor =
                 availableHours >= 0 ? "text-green-600" : "text-red-600";
 
@@ -101,7 +93,6 @@ const MachineLoad = () => {
                     <h3 className="text-xl font-semibold text-gray-800">
                       Machine: {machineInfo?.machineId || machineID}
                     </h3>
-
                     <p className="text-sm text-gray-500 mb-4">
                       Status:{" "}
                       <span
@@ -120,10 +111,9 @@ const MachineLoad = () => {
                     {machineSchedules.map((s, idx) => {
                       const start = new Date(s.scheduledStart);
                       const end = new Date(s.scheduledEnd);
-                      const duration = (
-                        (end - start) /
-                        (1000 * 60 * 60)
-                      ).toFixed(2);
+                      const machine = getMachineInfo(machineID);
+                      const timePerProduct = machine?.time_per_product || 0;
+                      const duration = (timePerProduct * s.quantity).toFixed(2);
 
                       return (
                         <div key={idx} className="text-sm text-gray-700">
@@ -141,35 +131,38 @@ const MachineLoad = () => {
 
                   <div className="mt-4 text-center text-sm text-gray-700">
                     Total Available Hours:
-                    <p className="font-medium ">
-                      {" "}
-                      {totalWorkingHours.toFixed(2)} hrs
-                    </p>
-                    Total Worked Hours: <p className="font-medium ">{workedHours.toFixed(2)} hrs</p>
-                    
-                      Remaining Hours: <p className={`${remainingHoursColor} font-semibold`}>{availableHours} hrs
-                    </p>
-                    <div className="mt-4 flex justify-center space-x-2">
-  <button
-    onClick={() => handleShiftIncrease(machineInfo?.machineId || machineID, 4)}
-    className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
-  >
-    +4 hrs
-  </button>
-  <button
-    onClick={() => handleShiftIncrease(machineInfo?.machineId || machineID, 6)}
-    className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-sm"
-  >
-    +6 hrs
-  </button>
-  <button
-    onClick={() => handleShiftIncrease(machineInfo?.machineId || machineID, 8)}
-    className="bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600 text-sm"
-  >
-    +8 hrs
-  </button>
-</div>
+                    <p className="font-medium ">{totalWorkingHours.toFixed(2)} hrs</p>
+                    Total Worked Hours:
+                    <p className="font-medium ">{workedHours.toFixed(2)} hrs</p>
+                    Remaining Hours:
+                    <p className={`${remainingHoursColor} font-semibold`}>{availableHours} hrs</p>
 
+                    <div className="mt-4 flex justify-center space-x-2">
+                      <button
+                        onClick={() =>
+                          handleShiftIncrease(machineInfo?.machineId || machineID, 4)
+                        }
+                        className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
+                      >
+                        +4 hrs
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleShiftIncrease(machineInfo?.machineId || machineID, 6)
+                        }
+                        className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-sm"
+                      >
+                        +6 hrs
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleShiftIncrease(machineInfo?.machineId || machineID, 8)
+                        }
+                        className="bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600 text-sm"
+                      >
+                        +8 hrs
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
