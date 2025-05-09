@@ -52,15 +52,6 @@ const AssignMachines = () => {
           >
             {loading ? "Scheduling..." : "Run Scheduler"}
           </button>
-
-          <button
-            onClick={handleIncreaseShift}
-            className={`px-6 py-3 font-semibold rounded-full shadow-md transition duration-300
-              ${loading ? "bg-orange-300" : "bg-orange-600 hover:bg-orange-700 text-white"}`}
-            disabled={loading}
-          >
-            {loading ? "Increasing..." : "Extend Production Hours"}
-          </button>
         </div>
 
         {message && (
