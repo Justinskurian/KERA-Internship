@@ -164,22 +164,43 @@ router.post("/increaseShift", async (req, res) => {
       return res.status(404).json({ error: "Machine not found." });
     }
 
-    // Parse endTime (e.g., "16:00")
+    const [startHour, startMinute] = machine.startTime.split(":").map(Number);
     const [endHour, endMinute] = machine.endTime.split(":").map(Number);
-    let newEndHour = endHour + increaseByHours;
 
-    if (newEndHour >= 24) newEndHour %= 24; // Wrap around midnight
+    let totalStart = startHour * 60 + startMinute;
+    let totalEnd = endHour * 60 + endMinute;
+    let currentShiftDuration = totalEnd - totalStart; // in minutes
+    let increaseByMinutes = increaseByHours * 60;
 
-    const formattedEndHour = String(newEndHour).padStart(2, "0");
-    const formattedEndMinute = String(endMinute).padStart(2, "0");
+    const maxEndHour = 23 * 60 + 0; // 23:00 in minutes
 
-    machine.endTime = `${formattedEndHour}:${formattedEndMinute}`;
-    
-    // Save to trigger the pre-save middleware for shiftHoursPerDay
+    let newEndMinutes = totalEnd + increaseByMinutes;
+
+    if (newEndMinutes <= maxEndHour) {
+      // Simple case: extend end time
+      totalEnd = newEndMinutes;
+    } else {
+      // Capped at 23:00, shift the remaining increase to start time
+      const allowedEndIncrease = maxEndHour - totalEnd;
+      const remainingMinutes = increaseByMinutes - allowedEndIncrease;
+
+      totalEnd = maxEndHour;
+      totalStart = Math.max(0, totalStart - remainingMinutes); // don’t go before 00:00
+    }
+
+    const newStartHour = Math.floor(totalStart / 60);
+    const newStartMinute = totalStart % 60;
+    const newEndHour = Math.floor(totalEnd / 60);
+    const newEndMinute = totalEnd % 60;
+
+    machine.startTime = `${String(newStartHour).padStart(2, "0")}:${String(newStartMinute).padStart(2, "0")}`;
+    machine.endTime = `${String(newEndHour).padStart(2, "0")}:${String(newEndMinute).padStart(2, "0")}`;
+
     await machine.save();
 
     res.status(200).json({
       message: `Shift extended by ${increaseByHours} hours.`,
+      newStartTime: machine.startTime,
       newEndTime: machine.endTime,
       newShiftHours: machine.shiftHoursPerDay,
     });
@@ -188,6 +209,7 @@ router.post("/increaseShift", async (req, res) => {
     res.status(500).send("Failed to update shift hours.");
   }
 });
+
 
 
 // Resets the schedule
