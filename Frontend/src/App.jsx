@@ -6,6 +6,7 @@ import ProductionOrder from "./Components/ProductionOrder";
 import AssignMachines from "./Components/AssignMachines";
 import Login from "./Components/Login";
 import MachineLoad from "./Components/MachineLoad";
+import MachineCalendar from "./Components/MachineCalendar";
 
 function App() {
   return (
@@ -17,6 +18,8 @@ function App() {
         <Route path="/details/" element={<Home child={<Details />}/>}></Route>
         <Route path="/machineload" element={<Home child={<MachineLoad />}/>}></Route>
         <Route path="/assign" element={<Home child={<AssignMachines />}/>}></Route>
+        <Route path="/calender" element={<Home child={<MachineCalendar />}/>}></Route>
+
       </Routes>
     </>
   );
