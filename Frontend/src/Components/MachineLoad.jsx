@@ -130,13 +130,8 @@ const MachineLoad = () => {
                   </div>
 
                   <div className="mt-4 text-center text-sm text-gray-700">
-                    Total Available Hours:
-                    <p className="font-medium ">{totalWorkingHours.toFixed(2)} hrs</p>
                     Total Worked Hours:
-                    <p className="font-medium ">{workedHours.toFixed(2)} hrs</p>
-                    Remaining Hours:
-                    <p className={`${remainingHoursColor} font-semibold`}>{availableHours} hrs</p><br/>
-                    <p className="font-semibold"> Increase The shift Hours per day</p>
+                    <p className="font-medium text-orange-600">{workedHours.toFixed(2)} hrs</p>
 
                     <div className="mt-4 flex justify-center space-x-2">
                       <button
