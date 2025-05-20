@@ -39,6 +39,10 @@ const MachineLoad = () => {
     }, 0);
   };
 
+  const getMachineInfo = (machineID) => {
+    return machineMeta.find((m) => m._id === machineID);
+  };
+
   const handleShiftIncrease = async (machineId, hours) => {
     try {
       const response = await axios.post(
@@ -58,8 +62,22 @@ const MachineLoad = () => {
     }
   };
 
-  const getMachineInfo = (machineID) => {
-    return machineMeta.find((m) => m._id === machineID);
+  const handleCapacityChange = async (machineDbId, percentage) => {
+    try {
+      const res = await axios.put(
+        `https://kera-internship.onrender.com/schedule/increaseCapacity/${machineDbId}`,
+        { increaseByPercentage: percentage }
+      );
+      alert(
+        `Success: ${percentage > 0 ? "Increased" : "Decreased"} Capacity.\n` +
+        `New Time Per Product: ${res.data.new_time_per_product}\n` +
+        `New Capacity: ${res.data.new_capacity}`
+      );
+      window.location.reload();
+    } catch (err) {
+      console.error("Error changing capacity:", err);
+      alert("Failed to update machine capacity.");
+    }
   };
 
   return (
@@ -80,9 +98,9 @@ const MachineLoad = () => {
                 (machineInfo?.shiftHoursPerDay || 0) * (machineInfo?.workingDays || 0);
               const availableHours = (totalWorkingHours - workedHours).toFixed(2);
               const latestStatus = machineSchedules[machineSchedules.length - 1]?.status || "Idle";
-
-              const remainingHoursColor =
-                availableHours >= 0 ? "text-green-600" : "text-red-600";
+              const capacityPerHour = machineInfo?.time_per_product
+                ? (1 / machineInfo.time_per_product).toFixed(2)
+                : "N/A";
 
               return (
                 <div
@@ -93,7 +111,7 @@ const MachineLoad = () => {
                     <h3 className="text-xl font-semibold text-gray-800">
                       Machine: {machineInfo?.machineId || machineID}
                     </h3>
-                    <p className="text-sm text-gray-500 mb-4">
+                    <p className="text-sm text-gray-500 mb-2">
                       Status:{" "}
                       <span
                         className={`font-medium ${
@@ -105,14 +123,19 @@ const MachineLoad = () => {
                         {latestStatus}
                       </span>
                     </p>
+                    <p className="text-sm text-gray-600">
+                      Capacity:{" "}
+                      <span className="text-blue-700 font-semibold">
+                        {capacityPerHour} units/hr
+                      </span>
+                    </p>
                   </div>
 
                   <div className="space-y-2">
                     {machineSchedules.map((s, idx) => {
                       const start = new Date(s.scheduledStart);
                       const end = new Date(s.scheduledEnd);
-                      const machine = getMachineInfo(machineID);
-                      const timePerProduct = machine?.time_per_product || 0;
+                      const timePerProduct = machineInfo?.time_per_product || 0;
                       const duration = (timePerProduct * s.quantity).toFixed(2);
 
                       return (
@@ -130,33 +153,42 @@ const MachineLoad = () => {
                   </div>
 
                   <div className="mt-4 text-center text-sm text-gray-700">
-                    Total Worked Hours:
+                    <p>Total Worked Hours:</p>
                     <p className="font-medium text-orange-600">{workedHours.toFixed(2)} hrs</p>
 
                     <div className="mt-4 flex justify-center space-x-2">
                       <button
-                        onClick={() =>
-                          handleShiftIncrease(machineInfo?.machineId || machineID, 4)
-                        }
+                        onClick={() => handleShiftIncrease(machineInfo?._id, 4)}
                         className="bg-orange-400 text-white px-3 py-1 rounded hover:bg-orange-500 text-sm"
                       >
                         +4 hrs
                       </button>
                       <button
-                        onClick={() =>
-                          handleShiftIncrease(machineInfo?.machineId || machineID, 6)
-                        }
+                        onClick={() => handleShiftIncrease(machineInfo?._id, 6)}
                         className="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 text-sm"
                       >
                         +6 hrs
                       </button>
                       <button
-                        onClick={() =>
-                          handleShiftIncrease(machineInfo?.machineId || machineID, 8)
-                        }
+                        onClick={() => handleShiftIncrease(machineInfo?._id, 8)}
                         className="bg-orange-600 text-white px-3 py-1 rounded hover:bg-orange-700 text-sm"
                       >
                         +8 hrs
+                      </button>
+                    </div>
+
+                    <div className="mt-4 flex justify-center space-x-2">
+                      <button
+                        onClick={() => handleCapacityChange(machineInfo?._id, 10)}
+                        className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
+                      >
+                        +10% Capacity
+                      </button>
+                      <button
+                        onClick={() => handleCapacityChange(machineInfo?._id, -10)}
+                        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm"
+                      >
+                        -10% Capacity
                       </button>
                     </div>
                   </div>
