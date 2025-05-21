@@ -9,7 +9,14 @@ const Details = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [scheduleData, setScheduleData] = useState([]);
 
-  // Fetch orders, machine BOM, and schedule data
+  const STAGE_ORDER = [
+    "COMPOUND MIXING",
+    "TUFTING",
+    "CUTTING",
+    "PRINTING",
+    "LABELLING & PACKING",
+  ];
+
   useEffect(() => {
     axios
       .get("https://kera-internship.onrender.com/order")
@@ -27,7 +34,6 @@ const Details = () => {
       .catch((error) => console.error("Error fetching schedule:", error));
   }, []);
 
-  // Set selected order from URL param or default
   useEffect(() => {
     if (orders.length > 0) {
       const matchedOrder = orders.find((order) => order._id === orderId);
@@ -35,7 +41,6 @@ const Details = () => {
     }
   }, [orders, orderId]);
 
-  // Extract delivery date from schedule data (LABELLING & PACKING)
   const getScheduledDeliveryDate = () => {
     if (!selectedOrder || scheduleData.length === 0) return null;
 
@@ -50,13 +55,30 @@ const Details = () => {
 
   const deliveryDate = getScheduledDeliveryDate();
 
+  const getScheduleFlow = () => {
+    if (!selectedOrder) return [];
+
+    const relevantSchedules = scheduleData.filter(
+      (s) => s.orderNumber === selectedOrder.orderId
+    );
+
+    return STAGE_ORDER.map((stage) =>
+      relevantSchedules.find((s) => s.stageName === stage)
+    ).filter(Boolean);
+  };
+
+  const formatUTC = (dateString) => {
+    return new Date(dateString).toISOString().replace("T", " ").slice(0, 19) ;
+  };
+
+  const flow = getScheduleFlow();
+
   return (
     <div className="w-full flex flex-col items-center">
       <h2 className="text-4xl font-semibold text-gray-700 text-center mb-6">
         Order Details
       </h2>
 
-      {/* Order Selection */}
       <div className="w-full max-w-5xl bg-white shadow-lg rounded-2xl p-8 mb-8">
         <label className="block text-lg font-semibold text-gray-700 mb-2">
           Select Order:
@@ -77,16 +99,38 @@ const Details = () => {
           ))}
         </select>
 
-        {/* Display Delivery Date */}
         <div className="text-lg font-semibold text-gray-600 text-center mt-4">
           <span className="text-gray-700">Expected Delivery Date: </span>
           <span className="text-orange-600">
-            {deliveryDate ? deliveryDate.toDateString() : "Not Scheduled"}
+            {deliveryDate ? formatUTC(deliveryDate) : "Not Scheduled"}
           </span>
         </div>
       </div>
 
-      {/* Process Details */}
+      <div className="w-full max-w-5xl p-6 rounded-xl bg-gray-100 shadow-lg rounded-2xl p-8 mb-8">
+        <h3 className="text-2xl font-semibold text-center text-gray-800 mb-4">
+          Production Flow Chart
+        </h3>
+        <div className="flex flex-col md:flex-row justify-center items-start md:items-center gap-6 flex-wrap">
+          {flow.map((stage, idx) => (
+            <div
+              key={idx}
+              className="bg-white rounded-xl shadow p-4 w-full md:w-64 text-center border-t-4 border-orange-400"
+            >
+              <h4 className="text-lg font-bold text-gray-700">
+                {stage.stageName}
+              </h4>
+              <p className="text-sm text-gray-600 mt-2">
+                <strong>Start:</strong> {formatUTC(stage.scheduledStart)}
+              </p>
+              <p className="text-sm text-gray-600">
+                <strong>End:</strong> {formatUTC(stage.scheduledEnd)}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-5xl">
         {selectedOrder && bom.length > 0 ? (
           bom.map((process, index) => (

@@ -17,15 +17,12 @@ const ProductionOrder = () => {
     deliveryDate: "",
   });
 
-  // Fetch orders and schedule info
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [ordersRes, scheduleRes] = await Promise.all([
           axios.get("https://kera-internship.onrender.com/order"),
-          axios.get(
-            "https://production-scheduler-backend-7qgb.onrender.com/scheduling/schedule"
-          ),
+          axios.get("https://production-scheduler-backend-7qgb.onrender.com/scheduling/schedule"),
         ]);
 
         const deliveryMap = {};
@@ -76,14 +73,17 @@ const ProductionOrder = () => {
         isNonChangeable: false,
         deliveryDate: "",
       });
-      const updatedOrders = await axios.get(
-        "https://kera-internship.onrender.com/order"
-      );
+      const updatedOrders = await axios.get("https://kera-internship.onrender.com/order");
       setOrders(updatedOrders.data);
     } catch (err) {
       console.error("Error creating order:", err);
       alert("Failed to create order.");
     }
+  };
+
+  const formatUTCDate = (dateString) => {
+    const date = new Date(dateString);
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")} ${String(date.getUTCHours()).padStart(2, "0")}:${String(date.getUTCMinutes()).padStart(2, "0")}:${String(date.getUTCSeconds()).padStart(2, "0")}`;
   };
 
   return (
@@ -131,7 +131,7 @@ const ProductionOrder = () => {
                   <p className="text-gray-500">Mapped Delivery Date</p>
                   <p className="text-md font-medium text-orange-600">
                     {scheduleData[po.orderId]
-                      ? new Date(scheduleData[po.orderId]).toLocaleString()
+                      ? formatUTCDate(scheduleData[po.orderId])
                       : "Not Scheduled"}
                   </p>
                 </div>

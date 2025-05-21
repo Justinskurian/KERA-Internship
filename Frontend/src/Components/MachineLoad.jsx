@@ -30,6 +30,12 @@ const MachineLoad = () => {
     return acc;
   }, {});
 
+  const formatUTC = (dateStr) => {
+    const date = new Date(dateStr);
+    const pad = (num) => String(num).padStart(2, "0");
+    return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
+  };
+
   const calculateWorkedHours = (machineSchedules, machineID) => {
     const machine = getMachineInfo(machineID);
     const timePerProduct = machine?.time_per_product || 0;
@@ -96,7 +102,6 @@ const MachineLoad = () => {
               const workedHours = calculateWorkedHours(machineSchedules, machineID);
               const totalWorkingHours =
                 (machineInfo?.shiftHoursPerDay || 0) * (machineInfo?.workingDays || 0);
-              const availableHours = (totalWorkingHours - workedHours).toFixed(2);
               const latestStatus = machineSchedules[machineSchedules.length - 1]?.status || "Idle";
               const capacityPerHour = machineInfo?.time_per_product
                 ? (1 / machineInfo.time_per_product).toFixed(2)
@@ -123,18 +128,32 @@ const MachineLoad = () => {
                         {latestStatus}
                       </span>
                     </p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-700">
                       Capacity:{" "}
-                      <span className="text-blue-700 font-semibold">
+                      <span className="font-semibold">
                         {capacityPerHour} units/hr
                       </span>
                     </p>
+                    <div className="mt-4 flex justify-center space-x-2">
+                      <button
+                        onClick={() => handleCapacityChange(machineInfo?._id, 10)}
+                        className="bg-orange-600 text-white px-3 py-1 rounded hover:bg-orange-700 text-sm"
+                      >
+                        +10% Capacity
+                      </button>
+                      <button
+                        onClick={() => handleCapacityChange(machineInfo?._id, -10)}
+                        className="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 text-sm"
+                      >
+                        -10% Capacity
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
                     {machineSchedules.map((s, idx) => {
-                      const start = new Date(s.scheduledStart);
-                      const end = new Date(s.scheduledEnd);
+                      const startUTC = formatUTC(s.scheduledStart);
+                      const endUTC = formatUTC(s.scheduledEnd);
                       const timePerProduct = machineInfo?.time_per_product || 0;
                       const duration = (timePerProduct * s.quantity).toFixed(2);
 
@@ -143,9 +162,7 @@ const MachineLoad = () => {
                           <p className="font-medium text-orange-600">
                             Order: {s.orderNumber}
                           </p>
-                          <p>
-                            {start.toLocaleString()} → {end.toLocaleString()}
-                          </p>
+                          <p>{startUTC} →{endUTC}</p>
                           <p>Duration: {duration} hrs</p>
                         </div>
                       );
@@ -174,21 +191,6 @@ const MachineLoad = () => {
                         className="bg-orange-600 text-white px-3 py-1 rounded hover:bg-orange-700 text-sm"
                       >
                         +8 hrs
-                      </button>
-                    </div>
-
-                    <div className="mt-4 flex justify-center space-x-2">
-                      <button
-                        onClick={() => handleCapacityChange(machineInfo?._id, 10)}
-                        className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
-                      >
-                        +10% Capacity
-                      </button>
-                      <button
-                        onClick={() => handleCapacityChange(machineInfo?._id, -10)}
-                        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm"
-                      >
-                        -10% Capacity
                       </button>
                     </div>
                   </div>
