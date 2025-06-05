@@ -7,7 +7,6 @@ router.use(express.json());
 
 router.post("/login", async (req, res) => {
   try {
-    //Mentor Validation
     const mentor = await loginModel.findOne({ email: req.body.email });
     if (mentor) {
       if (
